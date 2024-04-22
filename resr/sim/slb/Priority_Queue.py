@@ -278,17 +278,6 @@ def Run(rs, T=None, N=None):
     else:
         SIM.env.run()
 
-    print("\n", "Num Arrivals:", sep="")
-    for p,n in SIM.n_arrivals.items():
-        print(f"  {p}={n}")
-
-    print("\n", "Avg Wait:", sep="")
-    for typ in JOB.types:
-        W = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
-        print((f"  Job[{typ}]: "
-               f"Avg.Wait={sum(W)/len(W):6.2f}  "
-               f"completed={len(W):3d}"))
-
     if SIM.prnlog:
         for Q in "TBS WIP FIN".split():
             print("\n", f"{Q}:", sep="")
@@ -297,6 +286,15 @@ def Run(rs, T=None, N=None):
                        f"{SIM.fmt_t.format(j.t_arr)} "
                        f"{SIM.fmt_t.format(j.t_sta if j.t_sta else 0)} "
                        f"{SIM.fmt_t.format(j.t_fin if j.t_fin else 0)} "))
+
+    print()
+    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgWT':>6s}")
+    for typ in JOB.types:
+        W = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
+        na = SIM.n_arrivals[typ]
+        nc = len(W)
+        AWT = sum(W)/len(W)
+        print(f"{typ:>4s} {na:5d} {nc:5d} {AWT:6.2f}")
 
     return
 
