@@ -1,9 +1,28 @@
 """ Priority Queue
-
+    Job classes arrive with Exp. interarrival times
+    Multiple servers with Exp. service times
     
     import <this> as PQ
     reload(PQ); 
     PQ.Run(rs=42, T=None, N=50)
+
+    
+    reload(PQ); 
+    PQ.SIM.prnlog = False
+    PQ.Set_Instance(1)
+    PQ.JOB.priority = dict(A=1, B=1); PQ.Run(rs=4, T=2000)
+    PQ.JOB.priority = dict(A=1, B=2); PQ.Run(rs=4, T=2000)
+
+    TODO:
+      -random seed for each Arr.Process     (each Job Type)
+      -random seed for each Svc.Time distr. (each Job Type)
+      -better Instance setting function     
+          num_servers
+          num_job_types
+          priorities
+          partial WL values
+          frequencies (granularity)
+          target Utilization value
 """
 
 import salabim as sim
@@ -18,9 +37,48 @@ Exponential = sim.random.expovariate
 
 class JOB:
     types = ['A', 'B']
-    priority = dict(A=2, B=1)
+    priority = dict(A=1, B=2)
     arr_rate = dict(A=0.2, B=0.5)
     svc_time = dict(A=2.0, B=1.0)
+
+
+def Set_Instance(cho):
+    if cho == 1:
+        SIM.n_servers = 1
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.2, B=0.5)
+        JOB.svc_time = dict(A=2.0, B=1.0)
+        return
+    if cho == 2:
+        SIM.n_servers = 2
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.5, B=1.0)
+        JOB.svc_time = dict(A=1.8, B=0.8)
+        return
+    if cho == 3:
+        SIM.n_servers = 3
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.2, B=0.6)
+        JOB.svc_time = dict(A=4.0, B=3.0)
+        return
+    raise ValueError(f"Invalid choice cho={cho}")
+    
+
+def Analyze_Instance(cho):
+    Set_Instance(cho)
+    if (set(JOB.types) ^ set(JOB.priority.keys())) or \
+       (set(JOB.types) ^ set(JOB.arr_rate.keys())) or \
+       (set(JOB.types) ^ set(JOB.svc_time.keys())):
+        raise ValueError("Job classes not consistent with Priorities, Arr.Rt, or Svc.Rt.")
+    WL = sum(JOB.arr_rate[t]*JOB.svc_time[t] for t in JOB.types)
+    U = WL / SIM.n_servers
+    print(f"   WorkLoad = {WL:.3f}")
+    print(f"          s = {SIM.n_servers}")
+    print(f"Utilization = {U:.3f}")
+    return
 
 
 class SIM:
@@ -35,20 +93,28 @@ class SIM:
     WIP = None  # in_progress
     FIN = None  # completed
     #
-    p_job_types = None
-    p_job_priority = None
-    p_arr_rate = None
-    #
+    n_servers = 1
     n_arrivals = None
     n_max_arrivals = None
     #
     fmt_jid = "J{:}{:04d}"
     fmt_t   = "{:.2f}"
     fmt_apn = "AP[{:}]"
+    fmt_svn = "S{:02d}"
 
 
 def print_time_now():
     print(SIM.fmt_t.format(SIM.env.now()), end=": ")
+
+
+def print_srv_state(s, m, j):
+    if SIM.prnlog:
+        print_time_now()
+        print((f"{s} {m}  "
+               f"{j.name()}  "
+               f"TBS={len(SIM.TBS)}  "
+               f"WIP={len(SIM.WIP)}  "
+               f"FIN={len(SIM.FIN)}  "))
 
 
 def print_sch_state(s, j):
@@ -76,6 +142,7 @@ class Job(slb_Component):
         super().__init__(name=SIM.fmt_jid.format(job_type, idx), *args, **kwargs)
         self.idx      = idx
         self.job_type = job_type
+        self.job_prty = JOB.priority[job_type]
         self.t_arr    = t_arr
         self.t_sta    = None
         self.t_fin    = None
@@ -101,8 +168,8 @@ class Arrival_Process(slb_Component):
             j = Job(job_type = self.job_type, 
                     idx      = SIM.n_arrivals[self.job_type], 
                     t_arr    = SIM.env.now())
-            SIM.TBS.add(j)
-
+            SIM.TBS.add_sorted(component=j, priority=j.job_prty)
+            
             print_arr_event(j)
 
             if SIM.Scheduler.ispassive():
@@ -122,14 +189,15 @@ class Server(slb_Component):
 
             j = self.current_job
             svc_time = Exponential(1 / JOB.svc_time[j.job_type])
-
-            j = SIM.TBS.pop()
             j.t_sta = SIM.env.now()
-            SIM.WIP.add(j)
+            print_srv_state(self.name(), "sta", j)
+
             self.hold(svc_time)
+
             SIM.WIP.remove(j)
-            j.t_fin = SIM.env.now()
             SIM.FIN.add(j)
+            j.t_fin = SIM.env.now()
+            print_srv_state(self.name(), "fin", j)
 
             self.current_job = None
 
@@ -145,9 +213,11 @@ class Scheduler(slb_Component):
                 self.passivate()
 
             s = [s for s in SIM.Servers.values() if s.ispassive()][0]
-            s.current_job = SIM.TBS[0]
-            s.activate()
 
+            j = SIM.TBS.pop()
+            SIM.WIP.add(j)
+            s.current_job = j
+            s.activate()
 
             """
             -check if at least Server available
@@ -163,17 +233,15 @@ class Scheduler(slb_Component):
             j.t_sta = SIM.env.now()
             SIM.WIP.add(j)
 
-            if SIM.prnlog:
-                print_sch_state("sta", j)
+            print_sch_state("sta", j)
 
             self.hold(3)
 
             SIM.WIP.remove(j)
             j.t_fin = SIM.env.now()
             SIM.FIN.add(j)
-
-            if SIM.prnlog:
-                print_sch_state("fin", j)
+            
+            print_sch_state("fin", j)
             """
 
 
@@ -199,9 +267,10 @@ def Run(rs, T=None, N=None):
             )
         for j in JOB.types
     }
+    servers = (SIM.fmt_svn.format(i) for i in range(1,SIM.n_servers+1))
     SIM.Servers = {
         s : Server(name = s)
-        for s in ['S01']
+        for s in servers
     }
 
     if T is not None:
@@ -212,6 +281,13 @@ def Run(rs, T=None, N=None):
     print("\n", "Num Arrivals:", sep="")
     for p,n in SIM.n_arrivals.items():
         print(f"  {p}={n}")
+
+    print("\n", "Avg Wait:", sep="")
+    for typ in JOB.types:
+        W = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
+        print((f"  Job[{typ}]: "
+               f"Avg.Wait={sum(W)/len(W):6.2f}  "
+               f"completed={len(W):3d}"))
 
     if SIM.prnlog:
         for Q in "TBS WIP FIN".split():
