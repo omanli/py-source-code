@@ -16,6 +16,12 @@ Uniform = sim.random.uniform
 Exponential = sim.random.expovariate
 
 
+class JOB:
+    types = ['A', 'B']
+    priority = dict(A=2, B=1)
+    arr_rate = dict(A=0.2, B=0.5)
+    svc_time = dict(A=2.0, B=1.0)
+
 
 class SIM:
     env = None
@@ -115,7 +121,7 @@ class Server(slb_Component):
                 self.passivate()
 
             j = self.current_job
-            svc_time = Exponential(1 / SIM.p_svc_time[j.job_type])
+            svc_time = Exponential(1 / JOB.svc_time[j.job_type])
 
             j = SIM.TBS.pop()
             j.t_sta = SIM.env.now()
@@ -177,12 +183,7 @@ def Run(rs, T=None, N=None):
         raise ValueError
     SIM.n_max_arrivals = N
 
-    SIM.p_job_types = ['A', 'B']
-    SIM.p_job_priority = dict(A=2, B=1)
-    SIM.p_arr_rate = dict(A=0.2, B=0.5)
-    SIM.p_svc_time = dict(A=2.0, B=1.0)
-
-    SIM.n_arrivals = {p:0 for p in SIM.p_job_types}
+    SIM.n_arrivals = {p:0 for p in JOB.types}
     SIM.TBS = slb_Queue(name="Q[TBS]")
     SIM.WIP = slb_Queue(name="Q[WIP]")
     SIM.FIN = slb_Queue(name="Q[FIN]")
@@ -194,9 +195,9 @@ def Run(rs, T=None, N=None):
     SIM.Arrival_Processes = {
         j : Arrival_Process(
               job_type     = j, 
-              arrival_rate = SIM.p_arr_rate[j]
+              arrival_rate = JOB.arr_rate[j]
             )
-        for j in SIM.p_job_types
+        for j in JOB.types
     }
     SIM.Servers = {
         s : Server(name = s)
