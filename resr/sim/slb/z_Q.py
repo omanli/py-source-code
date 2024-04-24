@@ -1,61 +1,90 @@
 """ Experiment with priority feature in Queue Component
+
+    Job State: entities in priority queues  (next operation/task)
+               remember last/current server (mechanic) (resource)
+
+    Srv State: keep track whether assigned (resource claimed?)
+
+    find circumstances to switch server (mechanic) on a job
+                       to make 
+    
+    handle service time dependent on the server skill/type
+
 """
 
 import salabim as sim
 
-slb_Environment = sim.Environment
-slb_Component = sim.Component
-slb_Queue = sim.Queue
-
 
 class SIM:
-    env   = None
-    A     = None
-    Q     = None
+    env = None
+    A   = None  # arrivals
+    S   = None  # server
+    Q   = None  # queue
+    X   = None  # scheduler
+    iat = [int(v) for v in " 0 1 3 2 4 2 1".split()]
+    pri = [int(v) for v in " 0 3 2 1 3 2 1".split()]
+    svt = [int(v) for v in "20 2 4 1 3 1 2".split()]
     fmt_t = "{:4.1f}"
 
 
 def print_curr_time():
     print(SIM.fmt_t.format(SIM.env.now()), end=": ")
 
-
-def print_add(nm):
+def print_event(e, n):
     print_curr_time()
-    print(f"Add {nm}")
+    print(f"{e} {n}")
 
 def print_Q():
     for e in SIM.Q:
         print(f"      {e.name()} {e.prior} {e.t_arr}")
 
 
-class A(slb_Component):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, *args, **kwargs)
-        self.iat = [int(v) for v in "1 3 2 4 2 1".split()]
-        self.pri = [int(v) for v in "3 2 1 3 2 1".split()]
-
+class A(sim.Component):
     def process(self):
-        for i,(t,p) in enumerate(zip(self.iat, self.pri)):
+        for i,(t,p) in enumerate(zip(SIM.iat, SIM.pri)):
             self.hold(t)
-            nm = f"e{i+1}"
-            print_add(nm)
-            e = slb_Component(name=nm)
-            e.t_arr = SIM.env.now()
-            e.prior = p
-            SIM.Q.add_sorted(component=e, priority=p)
+            a = sim.Component(name=f"e{i+1}")
+            print_event("Arr", a.name())
+            a.t_arr = SIM.env.now()
+            a.prior = p
+            SIM.Q.add_sorted(component=a, priority=p)
             print_Q()
             print()
 
 
 
-def Run():
-    SIM.env = slb_Environment(trace=False)
-    SIM.A = A("Arrivals")
-    SIM.Q = slb_Queue(name="PQ")
+class S(sim.Component):
+    def process(self):
+        for s in SIM.svt:
+            self.passivate()
+            assert len(SIM.Q) > 0
+            j = SIM.Q.pop()
+            print_event("Sta", j.name())
+            self.hold(s)
+            print_event("Dpt", j.name())
 
-    print_curr_time()
-    print("Sim ready to run()")
+
+
+class X(sim.Component):
+    def process(self):
+        msg = {True:"Idle", False:"Busy"}
+        while True:
+            self.standby()
+            print_event("Sch", f"[{msg[SIM.S.ispassive()]}] {len(SIM.Q)}")
+            if (len(SIM.Q) > 0) and SIM.S.ispassive():
+                SIM.S.activate()
+
+
+def Run():
+    SIM.env = sim.Environment(trace=False)
+    SIM.A = A("Arrivals")
+    SIM.S = S("Service")
+    SIM.X = X("Scheduler")
+    SIM.Q = sim.Queue(name="Priority Q")
+
+    print_event("Sim ready to run()", "")
     SIM.env.run()
 
     return
+
 

@@ -1,28 +1,40 @@
 """ Priority Queue
-    Job classes arrive with Exp. interarrival times
-    Multiple servers with Exp. service times
-    
-    import <this> as PQ
-    reload(PQ); 
-    PQ.Run(rs=42, T=None, N=50)
+Job classes arrive with Exp. interarrival times
+Multiple servers with Exp. service times
 
-    
-    reload(PQ); 
-    PQ.SIM.prnlog = False
-    PQ.Set_Instance(1)
-    PQ.JOB.priority = dict(A=1, B=1); PQ.Run(rs=4, T=2000)
-    PQ.JOB.priority = dict(A=1, B=2); PQ.Run(rs=4, T=2000)
+import <this> as PQ
+reload(PQ); 
+PQ.Run(rs=42, T=None, N=50)
 
-    TODO:
-      -random seed for each Arr.Process     (each Job Type)
-      -random seed for each Svc.Time distr. (each Job Type)
-      -better Instance setting function     
-          num_servers
-          num_job_types
-          priorities
-          partial WL values
-          frequencies (granularity)
-          target Utilization value
+
+reload(PQ); 
+PQ.SIM.prnlog = False
+PQ.Set_Instance(1)
+PQ.JOB.priority = dict(A=1, B=1); PQ.Run(rs=4, T=2000)
+PQ.JOB.priority = dict(A=1, B=2); PQ.Run(rs=4, T=2000)
+
+TODO:
+  -use .standby() in the Scheduler
+  rather than activating the Scheduler from other components
+      https://www.salabim.org/manual/Modelling.html
+  -use stores/queues to model requests for servers
+      https://www.salabim.org/manual/Modelling.html
+      https://www.salabim.org/manual/Store.html
+  -or use a Queue to wait for a servers (multiple classes (one of the other) at the same time)
+      use stores to maintain instances of classes of servers
+  -figure out different service times when assigned to 
+  different classes of servers
+
+TODO:
+  -random seed for each Arr.Process     (each Job Type)
+  -random seed for each Svc.Time distr. (each Job Type)
+  -better Instance setting function     
+      num_servers
+      num_job_types
+      priorities
+      partial WL values
+      frequencies (granularity)
+      target Utilization value
 """
 
 import salabim as sim
@@ -40,45 +52,6 @@ class JOB:
     priority = dict(A=1, B=2)
     arr_rate = dict(A=0.2, B=0.5)
     svc_time = dict(A=2.0, B=1.0)
-
-
-def Set_Instance(cho):
-    if cho == 1:
-        SIM.n_servers = 1
-        JOB.types = ['A', 'B']
-        JOB.priority = dict(A=1, B=2)
-        JOB.arr_rate = dict(A=0.2, B=0.5)
-        JOB.svc_time = dict(A=2.0, B=1.0)
-        return
-    if cho == 2:
-        SIM.n_servers = 2
-        JOB.types = ['A', 'B']
-        JOB.priority = dict(A=1, B=2)
-        JOB.arr_rate = dict(A=0.5, B=1.0)
-        JOB.svc_time = dict(A=1.8, B=0.8)
-        return
-    if cho == 3:
-        SIM.n_servers = 3
-        JOB.types = ['A', 'B']
-        JOB.priority = dict(A=1, B=2)
-        JOB.arr_rate = dict(A=0.2, B=0.6)
-        JOB.svc_time = dict(A=4.0, B=3.0)
-        return
-    raise ValueError(f"Invalid choice cho={cho}")
-    
-
-def Analyze_Instance(cho):
-    Set_Instance(cho)
-    if (set(JOB.types) ^ set(JOB.priority.keys())) or \
-       (set(JOB.types) ^ set(JOB.arr_rate.keys())) or \
-       (set(JOB.types) ^ set(JOB.svc_time.keys())):
-        raise ValueError("Job classes not consistent with Priorities, Arr.Rt, or Svc.Rt.")
-    WL = sum(JOB.arr_rate[t]*JOB.svc_time[t] for t in JOB.types)
-    U = WL / SIM.n_servers
-    print(f"   WorkLoad = {WL:.3f}")
-    print(f"          s = {SIM.n_servers}")
-    print(f"Utilization = {U:.3f}")
-    return
 
 
 class SIM:
@@ -246,6 +219,47 @@ class Scheduler(slb_Component):
 
 
 
+def Analyze_Instance(cho):
+    Set_Instance(cho)
+    if (set(JOB.types) ^ set(JOB.priority.keys())) or \
+       (set(JOB.types) ^ set(JOB.arr_rate.keys())) or \
+       (set(JOB.types) ^ set(JOB.svc_time.keys())):
+        raise ValueError("Job classes not consistent with Priorities, Arr.Rt, or Svc.Rt.")
+    WL = sum(JOB.arr_rate[t]*JOB.svc_time[t] for t in JOB.types)
+    U = WL / SIM.n_servers
+    print(f"   WorkLoad = {WL:.3f}")
+    print(f"          s = {SIM.n_servers}")
+    print(f"Utilization = {U:.3f}")
+    return
+
+
+
+def Set_Instance(cho):
+    if cho == 1:
+        SIM.n_servers = 1
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.2, B=0.5)
+        JOB.svc_time = dict(A=2.0, B=1.0)
+        return
+    if cho == 2:
+        SIM.n_servers = 2
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.5, B=1.0)
+        JOB.svc_time = dict(A=1.8, B=0.8)
+        return
+    if cho == 3:
+        SIM.n_servers = 3
+        JOB.types = ['A', 'B']
+        JOB.priority = dict(A=1, B=2)
+        JOB.arr_rate = dict(A=0.2, B=0.6)
+        JOB.svc_time = dict(A=4.0, B=3.0)
+        return
+    raise ValueError(f"Invalid choice cho={cho}")
+    
+
+
 def Run(rs, T=None, N=None):
     if (T is None) and (N is None):
         raise ValueError
@@ -288,13 +302,15 @@ def Run(rs, T=None, N=None):
                        f"{SIM.fmt_t.format(j.t_fin if j.t_fin else 0)} "))
 
     print()
-    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgWT':>6s}")
+    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgST':>6s} {'AvgWT':>6s}")
     for typ in JOB.types:
-        W = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
+        ST = [(j.t_fin - j.t_sta) for j in SIM.FIN if j.job_type == typ]
+        WT = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
         na = SIM.n_arrivals[typ]
-        nc = len(W)
-        AWT = sum(W)/len(W)
-        print(f"{typ:>4s} {na:5d} {nc:5d} {AWT:6.2f}")
+        nc = len(ST)
+        AST = sum(ST) / nc
+        AWT = sum(WT) / nc
+        print(f"{typ:>4s} {na:5d} {nc:5d} {AST:6.2f} {AWT:6.2f}")
 
     return
 
