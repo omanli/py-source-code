@@ -11,56 +11,67 @@ def Enum(name, n):
     return [f"{name}{i:02d}" for i in range(1,n+1)]
 
 
-TU = {'years'   : sim.Uniform(1, 1, 'years')(),
-      'weeks'   : sim.Uniform(1, 1, 'weeks')(),
-      'days'    : sim.Uniform(1, 1, 'days')(),
-      'hours'   : sim.Uniform(1, 1, 'hours')(),
-      'minutes' : sim.Uniform(1, 1, 'minutes')(),
-      'seconds' : sim.Uniform(1, 1, 'seconds')(),}
-TU['yr' ] = TU['years'  ]
-TU['wk' ] = TU['weeks'  ]
-TU['day'] = TU['days'   ]
-TU['hr' ] = TU['hours'  ]
-TU['min'] = TU['minutes']
-TU['sec'] = TU['seconds']
+def TU(env):
+    """ TODO: return dict of functions: SIM.env.hours(), SIM.env.days(), etc
+    """
+    D = {'year'   : 365*24*60*60,
+         'week'   : 7*24*60*60,
+         'day'    : 24*60*60,
+         'hour'   : 60*60,
+         'minute' : 60,
+         'second' : 1,}
+    D['yr' ] = D['year'  ]
+    D['wk' ] = D['week'  ]
+    D['day'] = D['day'   ]
+    D['hr' ] = D['hour'  ]
+    D['min'] = D['minute']
+    D['sec'] = D['second']
+    D['years'  ] = D['year'  ]
+    D['weeks'  ] = D['week'  ]
+    D['days'   ] = D['day'   ]
+    D['hours'  ] = D['hour'  ]
+    D['minutes'] = D['minute']
+    D['seconds'] = D['second']
+    return D
 
 
 
-def RV(dist, time_unit, rs, *pars):
+
+def RV(env, dist, time_unit, rs, *pars):
     if dist.lower() in ('exponential', 'exp'):
-        return sim.Exponential(mean=pars[0], 
+        return env.Exponential(mean=pars[0], 
                                time_unit=time_unit, 
-                               randomstream=sim.random.Random(rs))
+                               randomstream=env.random.Random(rs))
 
     if dist.lower() in ('gamma', 'mm'):
-        return sim.Gamma(shape=pars[0], 
+        return env.Gamma(shape=pars[0], 
                          scale=pars[1], 
                          time_unit=time_unit, 
-                         randomstream=sim.random.Random(rs))
+                         randomstream=env.random.Random(rs))
     
     if dist.lower() in ('uniform', 'uni'):
-        return sim.Uniform(lowerbound=pars[0], 
+        return env.Uniform(lowerbound=pars[0], 
                            upperbound=pars[1], 
                            time_unit=time_unit, 
-                           randomstream=sim.random.Random(rs))
+                           randomstream=env.random.Random(rs))
     
     if dist.lower() in ('normal', 'nor'):
-        return sim.Normal(mean=pars[0], 
+        return env.Normal(mean=pars[0], 
                           standard_deviation=pars[1], 
                           time_unit=time_unit, 
-                          randomstream=sim.random.Random(rs))
+                          randomstream=env.random.Random(rs))
 
     if dist.lower() in ('triangular', 'tri'):
-        return sim.Triangular(low=pars[0], 
+        return env.Triangular(low=pars[0], 
                               mode=pars[1], 
                               high=pars[2], 
                               time_unit=time_unit, 
-                              randomstream=sim.random.Random(rs))
+                              randomstream=env.random.Random(rs))
 
     if dist.lower() in ('sequence', 'seq'):
         def gen(L):
             for v in L:
-                yield v * TU[time_unit]
+                yield v / env.get_time_unit(time_unit, 1)
         g = gen(pars[0])
         return g.__next__
 

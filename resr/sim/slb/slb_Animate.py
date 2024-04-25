@@ -50,6 +50,6 @@ sim.AnimateCircle(radius=60, radius1=30, x=300, y=400, text="An Ellipse")
 sim.AnimatePoints(spec=(100, 500, 150, 550, 180, 570, 250, 500, 300, 500), text="Some\nPoints")
 sim.AnimateText(text="This is a one-line text", x=100, y=600)
 sim.AnimateText(text=T, x=500, y=100)
-sim.AnimateImage("slb_pipe.jpg", x=500, y=400)
+sim.AnimateImage("px/slb_pipe.jpg", x=500, y=400)
 
 env.run(100)
