@@ -1,15 +1,4 @@
 """ Experiment with priority feature in Queue Component
-
-    Job State: entities in priority queues  (next operation/task)
-               remember last/current server (mechanic) (resource)
-
-    Srv State: keep track whether assigned (resource claimed?)
-
-    find circumstances to switch server (mechanic) on a job
-                       to make 
-    
-    handle service time dependent on the server skill/type
-
 """
 
 import salabim as sim

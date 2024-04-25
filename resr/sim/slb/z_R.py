@@ -1,4 +1,4 @@
-""" Experiment with priority feature in Queue Component
+""" Experiment with requesting resources on behalf of other Components
 
     Job State: entities in priority queues  (next operation/task)
                   add self to request queue

@@ -1,29 +1,16 @@
 """ Priority Queue
-Job classes arrive with Exp. interarrival times
-Multiple servers with Exp. service times
+    Job classes arrive with Exp. interarrival times
+    Multiple servers with Exp. service times
 
 import <this> as PQ
 reload(PQ); 
 PQ.Run(rs=42, T=None, N=50)
-
 
 reload(PQ); 
 PQ.SIM.prnlog = False
 PQ.Set_Instance(1)
 PQ.JOB.priority = dict(A=1, B=1); PQ.Run(rs=4, T=2000)
 PQ.JOB.priority = dict(A=1, B=2); PQ.Run(rs=4, T=2000)
-
-TODO:
-  -use .standby() in the Scheduler
-  rather than activating the Scheduler from other components
-      https://www.salabim.org/manual/Modelling.html
-  -use stores/queues to model requests for servers
-      https://www.salabim.org/manual/Modelling.html
-      https://www.salabim.org/manual/Store.html
-  -or use a Queue to wait for a servers (multiple classes (one of the other) at the same time)
-      use stores to maintain instances of classes of servers
-  -figure out different service times when assigned to 
-  different classes of servers
 
 TODO:
   -random seed for each Arr.Process     (each Job Type)
@@ -182,6 +169,13 @@ class Server(slb_Component):
 class Scheduler(slb_Component):
     def process(self):
         while True:
+            """ -check if at least one Server is available
+                -select Server
+                -select Job
+                -handle Queue
+                -assign Job to Server
+                -activate Server
+            """
             while (len(SIM.TBS) == 0) or all(not s.ispassive() for s in SIM.Servers.values()):
                 self.passivate()
 
@@ -191,31 +185,6 @@ class Scheduler(slb_Component):
             SIM.WIP.add(j)
             s.current_job = j
             s.activate()
-
-            """
-            -check if at least Server available
-            -select Server
-            -select Job
-            -handle Queue
-            -assign Job to Server
-            -activate Server
-            """
-
-            """
-            j = SIM.TBS.pop()
-            j.t_sta = SIM.env.now()
-            SIM.WIP.add(j)
-
-            print_sch_state("sta", j)
-
-            self.hold(3)
-
-            SIM.WIP.remove(j)
-            j.t_fin = SIM.env.now()
-            SIM.FIN.add(j)
-            
-            print_sch_state("fin", j)
-            """
 
 
 
