@@ -43,6 +43,11 @@ def RV(env, dist, time_unit, rs, *pars):
                                time_unit=time_unit, 
                                randomstream=env.random.Random(rs))
 
+    if dist.lower() in ('exponentialrate', 'exprt'):
+        return env.Exponential(rate=pars[0], 
+                               time_unit=time_unit, 
+                               randomstream=env.random.Random(rs))
+
     if dist.lower() in ('gamma', 'mm'):
         return env.Gamma(shape=pars[0], 
                          scale=pars[1], 
@@ -75,4 +80,4 @@ def RV(env, dist, time_unit, rs, *pars):
         g = gen(pars[0])
         return g.__next__
 
-
+    raise ValueError(f"Invalid dist={dist}")

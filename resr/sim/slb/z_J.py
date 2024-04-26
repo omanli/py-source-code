@@ -36,9 +36,11 @@ SIM.prnlog = True
 #
 SIM.Arrivals  = None   # job creator components
 SIM.Scheduler = None   # scheduler component
-SIM.Resources = None   # list of all resources
+SIM.Resource  = None   # list of all resources
 #
-SIM.Queues    = None   # dict of queues: Task ResRequests
+SIM.ActJobs   = None   # queue to keep all active jobs
+#
+SIM.Requests  = None   # dict of queues: Task ResRequests
 SIM.State_TBS = None   # queue: on_hold
 SIM.State_WIP = None   # queue: in_progress
 SIM.State_FIN = None   # queue: completed
@@ -46,7 +48,7 @@ SIM.State_FIN = None   # queue: completed
 SIM.n_arrivals = None
 #
 SIM.fmt_jid = "J[{:}{:04d}]"
-SIM.fmt_t   = "{:.2f}"
+SIM.fmt_t   = "{:6.2f}"
 SIM.fmt_apn = "J[{:}]"
 SIM.fmt_res = "{:}{:02d}"
 
@@ -65,8 +67,10 @@ class JOB:
     types = 'A B'.split()
     priority ['A'] = 1
     priority ['B'] = 2
-    ia_time  ['A'] = RV(SIM.env, 'Exponential', 'hours', 123, 1.2)
-    ia_time  ['B'] = RV(SIM.env, 'Exponential', 'hours', 321, 0.8)
+    # ia_time  ['A'] = RV(SIM.env, 'Exponential', 'hours', 123, 1.1)
+    # ia_time  ['B'] = RV(SIM.env, 'Exponential', 'hours', 321, 1.5)
+    ia_time  ['A'] = RV(SIM.env, 'ExpRt', 'hours', 123, 1.2)
+    ia_time  ['B'] = RV(SIM.env, 'ExpRt', 'hours', 321, 0.8)
 
     tasks['A'] = [
         SNS(res='1', dur=RV(SIM.env, 'Tri', 'minutes', 333, 20, 30, 40)),
@@ -76,35 +80,32 @@ class JOB:
 
     tasks['B'] = [
         SNS(res='2', dur=RV(SIM.env, 'Tri', 'minutes', 300, 20, 30, 40)),
-        SNS(res='3', dur=RV(SIM.env, 'Tri', 'minutes', 200, 20, 25, 30)),
+        SNS(res='3', dur=RV(SIM.env, 'Tri', 'minutes', 200, 20, 40, 50)),
         SNS(res='5', dur=RV(SIM.env, 'Tri', 'minutes', 400, 15, 30, 40)),
     ]
-
 
 
 def print_time_now():
     print(SIM.fmt_t.format(SIM.env.now()), end=": ")
 
 
-def print_srv_state(s, m, j):
+def print_event(e):
+    print(SIM.fmt_t.format(SIM.env.now()) + f': {e}')
+
+
+def print_sys_state(s):
     if SIM.prnlog:
         print_time_now()
-        print((f"{s} {m}  "
-               f"{j.name()}  "
-               f"TBS={len(SIM.TBS)}  "
-               f"WIP={len(SIM.WIP)}  "
-               f"FIN={len(SIM.FIN)}  "))
+        # print(s + " ".join(f"Q[{r}]={len(Q)}" for r,Q in SIM.Requests.items()))
+        print(s + " ".join(f"{len(Q):2}" for Q in SIM.Requests.values()))
+        print_time_now()
+        # print(" "*len(s) + " ".join(f"R[{r}]={len(R.claimers())}" for r,R in SIM.Resource.items()))
+        print(" "*len(s) + " ".join(f"{len(R.claimers()):2}" for R in SIM.Resource.values()))
 
-
-def print_sch_state(s, j):
+def print_active_jobs(s):
     if SIM.prnlog:
         print_time_now()
-        print((f"Sch[{s}] "
-               f"{j.name()}  "
-               f"TBS={len(SIM.TBS)}  "
-               f"WIP={len(SIM.WIP)}  "
-               f"FIN={len(SIM.FIN)}  "))
-
+        print(s + " ".join(f"{j.name()}" for j in SIM.ActJobs))
 
 def print_arr_event(j):
     if SIM.prnlog:
@@ -115,24 +116,6 @@ def print_arr_event(j):
 def print_shop_state():
     print("TBD")
 
-
-class Job(sim.Component):
-    def __init__(self, job_type, idx, t_arr, *args, **kwargs):
-        super().__init__(name=SIM.fmt_jid.format(job_type, idx), *args, **kwargs)
-        self.idx      = idx
-        self.job_type = job_type
-        self.job_prty = JOB.priority[job_type]
-        self.t_arr    = t_arr
-        self.t_sta    = None
-        self.t_fin    = None
-
-    def process(self):
-        for T in JOB.tasks[self.job_type]:
-            SIM.Queues[T.res].add(self)
-            print_time_now()
-            print(f'{self.name()} created')
-            self.passivate()
-            # T.dur
 
 class Arrival_Process(sim.Component):
     def __init__(self, job_type, *args, **kwargs):
@@ -147,38 +130,38 @@ class Arrival_Process(sim.Component):
             j = Job(job_type = self.job_type, 
                     idx      = SIM.n_arrivals[self.job_type], 
                     t_arr    = SIM.env.now())
-            # SIM.TBS.add_sorted(component=j, priority=j.job_prty)
-            print_arr_event(j)
-            # SIM.Scheduler.activate()
+            
+            # j is automatically activated, no need to explicitly call j.activate()
+            # let the new arriving job awake the scheduler SIM.Scheduler.activate()
+            SIM.ActJobs.add(j)
 
 
 
-class Server(sim.Component):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, *args, **kwargs)
-        self.current_job = None
+class Job(sim.Component):
+    def __init__(self, job_type, idx, t_arr, *args, **kwargs):
+        super().__init__(name=SIM.fmt_jid.format(job_type, idx), *args, **kwargs)
+        self.idx      = idx
+        self.job_type = job_type
+        self.job_prty = JOB.priority[job_type]
+        self.t_arr    = t_arr
+        self.t_sta    = None
+        self.t_fin    = None
 
     def process(self):
-        svc_time = RV(SIM.env, "Exponential", SIM.time_unit, 42, JOB.svc_time[j.job_type])
-        while True:
-            while self.current_job is None:
-                self.passivate()
+        print_event(f'{self.name()} arrives')
+        for T in JOB.tasks[self.job_type]:
+            print_event(f'{self.name()} requests res:{T.res}')
+            SIM.Requests[T.res].add(self)
+            SIM.Scheduler.activate()
+            self.passivate()
+            # print(f"{self.name()} dur={t:4.2f}")
+            self.request((SIM.Resource[T.res], 1))
+            # print(f"{self.name()} dur={t:4.2f}")
+            self.hold(T.dur)
+            self.release()
+        SIM.ActJobs.remove(self)
+        print_event(f'{self.name()} departs')
 
-            j = self.current_job            
-            j.t_sta = SIM.env.now()
-            print_srv_state(self.name(), "sta", j)
-
-            self.hold(svc_time)
-
-            SIM.WIP.remove(j)
-            SIM.FIN.add(j)
-            j.t_fin = SIM.env.now()
-            print_srv_state(self.name(), "fin", j)
-
-            self.current_job = None
-
-            if SIM.Scheduler.ispassive():
-                SIM.Scheduler.activate()
 
 
 
@@ -192,7 +175,20 @@ class Scheduler(sim.Component):
                 -assign Job to Server
                 -activate Server
             """
+            print_sys_state("Sch before scan ")
+
+            # scan Queues & Resources
+            for r,Q in SIM.Requests.items():
+                if (len(Q) > 0) and len(SIM.Resource[r].claimers()) < SIM.Resource[r].capacity():
+                    j = SIM.Requests[r].pop()
+                    j.activate()                    
+                    # print_event(f"Sch Job[{j.name()}] req {r1:5.3f} {r2:5.3f}")
+                    # self.release(SIM.M)
+
+            # self.hold(0.3)
+            print_sys_state("Sch after  scan ")
             self.passivate()
+            # print_event("Sch[ ] after  passivate")
             """
             while (len(SIM.TBS) == 0) or all(not s.ispassive() for s in SIM.Servers.values()):
                 self.passivate()
@@ -212,18 +208,34 @@ def Run(rs, T=None, time_unit=None):
     SIM.env.random_seed(rs)
     time_unit  = SIM.time_unit if time_unit is None else time_unit
 
+    U = sim.Uniform(1000,9999)
+    for typ in JOB.types:
+        JOB.ia_time[typ].randomstream = sim.random.Random(int(U()))
+
     SIM.n_arrivals = { 
         j : 0  for j in JOB.types 
     }
     SIM.Arrivals = {
         j : Arrival_Process(job_type=j) for j in JOB.types
     }
-    SIM.Queues = {
+    SIM.Resource = {
+        r : sim.Resource(name=r, capacity=1) for r in SHOP.resources
+    }
+    SIM.Requests = {
         r : sim.Queue(name=r) for r in SHOP.resources
     }
+    SIM.ActJobs = sim.Queue(name='ActiveJobs')
     SIM.Scheduler = Scheduler()
 
+    # print_sys_state('Run ')
     SIM.env.run(till = T * SIM.tu[time_unit] / SIM.tu[SIM.time_unit])
+
+    print()
+    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgST':>6s} {'AvgWT':>6s}")
+    for typ in JOB.types:
+        nc, AST, AWT = -1, -1, -1
+        na = SIM.n_arrivals[typ]
+        print(f"{typ:>4s} {na:5d} {nc:5d} {AST:6.2f} {AWT:6.2f}")
 
     """    
     print(f"\nNum Ev = {SIM.num_events}")
@@ -273,5 +285,4 @@ def Run(rs, T=None, time_unit=None):
     """
     
     return
-
 
