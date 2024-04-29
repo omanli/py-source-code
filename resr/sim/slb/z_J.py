@@ -8,7 +8,6 @@
 import <this> as J
 reload(J); 
 J.SIM.prnlog = False
-?J.Set_Instance(1)
 ?J.JOB.priority = dict(A=1, B=1); J.Run(rs=4, T=2000)
 ?J.JOB.priority = dict(A=1, B=2); J.Run(rs=4, T=2000)
 
@@ -237,52 +236,10 @@ def Run(rs, T=None, time_unit=None):
         na = SIM.n_arrivals[typ]
         print(f"{typ:>4s} {na:5d} {nc:5d} {AST:6.2f} {AWT:6.2f}")
 
-    """    
-    print(f"\nNum Ev = {SIM.num_events}")
-    """
-
-    """
-    if (T is None) and (N is None):
-        raise ValueError
-    SIM.n_max_arrivals = N
-
-    SIM.n_arrivals = {p:0 for p in JOB.types}
-    SIM.TBS = sim.Queue(name="Q[TBS]")
-    SIM.WIP = sim.Queue(name="Q[WIP]")
-    SIM.FIN = sim.Queue(name="Q[FIN]")
-
-
-    servers = (SIM.fmt_svn.format(i) for i in range(1,SIM.n_servers+1))
-    SIM.Servers = {
-        s : Server(name = s)
-        for s in servers
-    }
-
-    if T is not None:
-        SIM.env.run(till=T)
-    else:
-        SIM.env.run()
-
-    if SIM.prnlog:
-        for Q in "TBS WIP FIN".split():
-            print("\n", f"{Q}:", sep="")
-            for j in getattr(SIM, Q):
-                print((f"  {j.name()} "
-                       f"{SIM.fmt_t.format(j.t_arr)} "
-                       f"{SIM.fmt_t.format(j.t_sta if j.t_sta else 0)} "
-                       f"{SIM.fmt_t.format(j.t_fin if j.t_fin else 0)} "))
-
     print()
-    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgST':>6s} {'AvgWT':>6s}")
-    for typ in JOB.types:
-        ST = [(j.t_fin - j.t_sta) for j in SIM.FIN if j.job_type == typ]
-        WT = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
-        na = SIM.n_arrivals[typ]
-        nc = len(ST)
-        AST = sum(ST) / nc
-        AWT = sum(WT) / nc
-        print(f"{typ:>4s} {na:5d} {nc:5d} {AST:6.2f} {AWT:6.2f}")
-    """
+    for n,R in SIM.Resource.items():
+        R.print_statistics()
+        # R.occupancy.mean()
     
     return
 
