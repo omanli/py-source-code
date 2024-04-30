@@ -117,10 +117,7 @@ class SIM:
     Scheduler = None   # scheduler component
     Resources = None   # list of all resources
     #
-    ResRequests = None # dict of queues: Task ResRequests
-    State_TBS = None   # queue: on_hold
-    State_WIP = None   # queue: in_progress
-    State_FIN = None   # queue: completed
+    Requests  = None   # dict of queues: Resource Requests
     #
     n_arrivals = None
     #
@@ -204,35 +201,6 @@ class Arrival_Process(sim.Component):
 
 
 
-class Server(sim.Component):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name=name, *args, **kwargs)
-        self.current_job = None
-
-    def process(self):
-        while True:
-            while self.current_job is None:
-                self.passivate()
-
-            j = self.current_job
-            svc_time = Exponential(1 / JOB.svc_time[j.job_type])
-            j.t_sta = SIM.env.now()
-            print_srv_state(self.name(), "sta", j)
-
-            self.hold(svc_time)
-
-            SIM.WIP.remove(j)
-            SIM.FIN.add(j)
-            j.t_fin = SIM.env.now()
-            print_srv_state(self.name(), "fin", j)
-
-            self.current_job = None
-
-            if SIM.Scheduler.ispassive():
-                SIM.Scheduler.activate()
-
-
-
 class Scheduler(sim.Component):
     def process(self):
         while True:
@@ -266,23 +234,12 @@ def Run(rs, T=None, N=None):
         g = SIM.env.Uniform(1000,9999)
         rsg = [g() for _ in range(1,21)]
 
-    if rsg[0]:
-        E(name="Exp1", iat=RV('Exponential', 'years',   rsg[0], 3/365))
-    if rsg[1]:
-        E(name="Exp2", iat=RV('Exponential', 'hours',   rsg[1], 24*3))
-    if rsg[2]:
-        E(name="Gmm",  iat=RV('Gamma',       'weeks',   rsg[2], 4, (3/7)/4))
-    if rsg[3]:
-        E(name="Nor",  iat=RV('Normal',      'minutes', rsg[3], 3*24*60, 0.5*24*60))
-    if rsg[4]:
-        E(name="Tri",  iat=RV('Triangular',  'seconds', rsg[4], 1*24*3600, 2*24*3600, 6*24*3600))
-
     SIM.env.run(till=T*SIM.tu)
     
     print(f"\nNum Ev = {SIM.num_events}")
-    """
 
-    """
+    
+
     if (T is None) and (N is None):
         raise ValueError
     SIM.n_max_arrivals = N
@@ -336,5 +293,3 @@ def Run(rs, T=None, N=None):
     """
     
     return
-
-
