@@ -180,7 +180,7 @@ class Scheduler(sim.Component):
             for r,Q in SIM.Requests.items():
                 if (len(Q) > 0) and len(SIM.Resource[r].claimers()) < SIM.Resource[r].capacity():
                     j = SIM.Requests[r].pop()
-                    j.activate()                    
+                    j.activate()
                     # print_event(f"Sch Job[{j.name()}] req {r1:5.3f} {r2:5.3f}")
                     # self.release(SIM.M)
 

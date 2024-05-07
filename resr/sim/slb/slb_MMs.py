@@ -29,6 +29,55 @@ provide an assignment/setup function to provide help on
 module level attributes or top level class
 '''
 
+'''
+import slb_MMs as M
+reload(M); 
+M.setup(arr_rate=1, util=0.98, num_srv=3); 
+M.run(T=1000, rs=1, trace=False)
+M.run(T=1000, rs=2, trace=False)
+M.run(T=1000, rs=3, trace=False)
+'''
+
+
+# dataclass used as namespace 
+class Model():
+    env = None
+    svc_time_dist = None
+    iar_time_dist = None
+    Queue = None
+    Servers = None
+    Arrivals = None
+    arr_rate = None
+    svc_rate = None
+    util = None
+    num_srv = None
+
+
+
+# setup parameters of the model
+def setup(arr_rate=None, svc_rate=None, num_srv=1, util=None):
+    if sum(1 for v in (arr_rate, svc_rate, util) if v is not None) != 2:
+        raise ValueError(f"Exactly 2 out of 3 must be given: arr_rate={arr_rate} svc_rate={svc_rate} util={util}")
+    
+    if util is not None:
+        arr_rate = util * num_srv * svc_rate if arr_rate is None else arr_rate
+        svc_rate = arr_rate / (util * num_srv) if svc_rate is None else svc_rate
+
+    Model.arr_rate = arr_rate
+    Model.svc_rate = svc_rate
+    Model.num_srv = num_srv
+    Model.util = arr_rate / (num_srv * svc_rate)
+
+    n, M, L, U = Model.num_srv, Model.svc_rate, Model.arr_rate, Model.util
+    nS = U / (1 - U)
+    nQ = nS - U
+    tS = 1 / (n*M - L)
+    tQ = tS - 1/M
+    print(f"Avg. Num in Sys = {nS:7.4f}")
+    print(f"Avg. Num in Que = {nQ:7.4f}")
+    print(f"  Avg. Sys.Time = {tS:7.4f}")
+    print(f"  Avg. Que.Time = {tQ:5.2f}")
+
 
 
 class Customer(sim.Component):
@@ -37,6 +86,7 @@ class Customer(sim.Component):
 
     def process(self):
         yield self.passivate()
+
 
 
 class Arrivals(sim.Component):
@@ -58,6 +108,7 @@ class Arrivals(sim.Component):
             yield self.hold(Model.iar_time_dist.sample())
 
 
+
 class Server(sim.Component):
     def process(self):
         while True:
@@ -68,57 +119,6 @@ class Server(sim.Component):
             c.activate()
 
 
-'''
-explicit top level class (informal dataclass) used as namespace 
-to access (r/w) simulation model parameters and salabim module objects
-'''
-class Model():
-    env = None
-    svc_time_dist = None
-    iar_time_dist = None
-    Queue = None
-    Servers = None
-    Arrivals = None
-    arr_rate = None
-    svc_rate = None
-    util = None
-    num_srv = None
-
-
-# setup paramters of the model
-def setup(arr_rate=None, svc_rate=None, num_srv=1, util=None):
-    if all((arr_rate is None, svc_rate is None, util is None)):
-        raise ValueError(f"All three arr_rate={arr_rate} svc_rate={svc_rate} util={util} cannot be None")
-    if all((arr_rate is not None, svc_rate is not None, util is not None)):
-        raise ValueError(f"All three arr_rate={arr_rate} svc_rate={svc_rate} util={util} cannot be values")
-    if util is not None:
-        if arr_rate is None:
-            arr_rate = util * num_srv * svc_rate
-        else:
-            svc_rate = arr_rate / (util * num_srv)
-
-    Model.arr_rate = arr_rate
-    Model.svc_rate = svc_rate
-    Model.num_srv = num_srv
-    Model.util = arr_rate / (num_srv * svc_rate)
-
-    n, M, L, U = Model.num_srv, Model.svc_rate, Model.arr_rate, Model.util
-    nS = U / (1 - U)
-    nQ = nS - U
-    tS = 1 / (n*M - L)
-    tQ = tS - 1/M
-    print(f"Avg. Num in Sys = {nS:7.4f}")
-    print(f"Avg. Num in Que = {nQ:7.4f}")
-    print(f"  Avg. Sys.Time = {tS:7.4f}")
-    print(f"  Avg. Que.Time = {tQ:5.2f}")
-
-
-'''
-import slb_MMs as M
-reload(M); M.setup(arr_rate=1, util=0.98, num_srv=3); M.run(1000,1,trace=False)
-M.run(1000,2,trace=False)
-M.run(1000,3,trace=False)
-'''
 def run(T, rs=0, trace=False):
     # sequence important, do environment creation first
     Model.env = sim.Environment(trace=trace)
