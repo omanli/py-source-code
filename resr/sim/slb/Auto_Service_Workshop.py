@@ -12,6 +12,20 @@ ASW.Run(123, 3)
 ASW.Run(None, 3)
 ASW.SIM.Requests["Lifts"].print_info()
 
+import yaml
+with open('Model01.yaml', 'r') as yf:
+    D = yaml.safe_load(yf.read())
+
+D['RUN']
+D['SHOP']
+D['JOB']
+D['JOB']['types']
+D['JOB']['priority']
+D['JOB']['ia_time']
+D['JOB']['tasks']
+D['JOB']['tasks']['A']
+
+
 
 TODO:
   - If more than one type of resource is available to a Request 
@@ -227,7 +241,7 @@ class Job(sim.Component):
             assert self.resr_asg is None
             self.task.append(SNS())
 
-            print_job_state(self, f"{T.name:12} [{T.rsgr}]")
+            print_job_state(self, f"{T.name:19} [{T.rsgr}]")
 
             # Seize 
             if 'S' in T.type:
@@ -241,29 +255,22 @@ class Job(sim.Component):
                 assert self.resr_asg is not None
                 self.resr_acq[T.ridx] = self.resr_asg
                 self.resr_asg = None
-                print_job_state(self, "acquired resources: [" + " ".join(r.name() for r in self.claimed_resources()) + "]")
+                print_job_state(self, "Acquired Resources: [" + " ".join(r.name() for r in self.claimed_resources()) + "]")
 
             # Delay 
             if 'D' in T.type:
                 self.wip = True
                 self.task[-1].t_d_sta = SIM.env.now()
-                print(self.resr_acq[T.ridx].name(), SHOP.rtyp[self.resr_acq[T.ridx].name()])
-                """
-                ?? do something like this:
-                    for r in self.claimed_resources():
-                        if r.name() in SHOP.resgroup[T.rsgr]:
-                            print_job_state(self, f"releasing resource: [{r.name()}]")
-                            self.task[-1].t_r = SIM.env.now()
-                            self.release(r)
-                            SIM.Scheduler.activate()
-                """
+                print_job_state(self, (f"Delay on Resource:  "
+                                       f"[{self.resr_acq[T.ridx].name()}"
+                                       f" {SHOP.rtyp[self.resr_acq[T.ridx].name()]}]"))
                 self.hold(T.dur[SHOP.rtyp[self.resr_acq[T.ridx].name()]])
                 self.wip = False
                 self.task[-1].t_d_fin = SIM.env.now()
 
             # Release
             if 'R' in T.type:
-                print_job_state(self, f"releasing resource: [{self.resr_acq[T.ridx].name()}]")
+                print_job_state(self, f"Releasing Resource: [{self.resr_acq[T.ridx].name()}]")
                 self.task[-1].t_r = SIM.env.now()
                 self.release(self.resr_acq[T.ridx])
                 assert self.resr_asg is None
@@ -280,9 +287,9 @@ class Scheduler(sim.Component):
                 -try to assign resources to high priority 
             """
             print_time_now()
-            print()
+            print(" [Schdl] Activates")
             for j in SIM.Requests:
-                print(f"    {j.name()} " + (j.rsgr_req if j.rsgr_req is not None else "--"))
+                # print(f"    {j.name()} " + (j.rsgr_req if j.rsgr_req is not None else "--"))
                 for r in SHOP.resgroup[j.rsgr_req]:
                     if SIM.Resource[r].available_quantity() > 0:
                         SIM.Requests.remove(j)
@@ -334,14 +341,14 @@ def Run(rs, T):
     SIM.env.run(till=T)
 
     print()
-    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s}") 
+    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'#WIP':>5s}") 
     # " {'AvgST':>6s} {'AvgWT':>6s}")
     for typ in JOB.types:
         # nc, AST, AWT = -1, -1, -1
         # "{nc:5d} {AST:6.2f} {AWT:6.2f}"
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
-        print(f"{typ:>4s} {na:5d} {nc:5d}") 
+        print(f"{typ:>4s} {na:5d} {nc:5d} {na-nc:5d}") 
         """
         j.job_prty
         j.rsgr_req
@@ -350,37 +357,5 @@ def Run(rs, T):
     print("\nFinished but still requesting:", 
             sum(1 for j in SIM.Arrivals 
                 if (j.t_fin is not None) and (j.rsgr_req is not None)))
-    
-
-
-
-    """
-    [f"{j.name()} {j.claimed_resources()} for j in ASW.SIM.Arrivals]
-    [ for j in ASW.SIM.Arrivals]
-    [j.t_fin for j in ASW.SIM.Arrivals]
-    """
-
-
-    """
-    if SIM.prnlog:
-        for Q in "TBS WIP FIN".split():
-            print("\n", f"{Q}:", sep="")
-            for j in getattr(SIM, Q):
-                print((f"  {j.name()} "
-                       f"{SIM.fmt_t.format(j.t_arr)} "
-                       f"{SIM.fmt_t.format(j.t_sta if j.t_sta else 0)} "
-                       f"{SIM.fmt_t.format(j.t_fin if j.t_fin else 0)} "))
-
-    print()
-    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'AvgST':>6s} {'AvgWT':>6s}")
-    for typ in JOB.types:
-        ST = [(j.t_fin - j.t_sta) for j in SIM.FIN if j.job_type == typ]
-        WT = [(j.t_sta - j.t_arr) for j in SIM.FIN if j.job_type == typ]
-        na = SIM.n_arrivals[typ]
-        nc = len(ST)
-        AST = sum(ST) / nc
-        AWT = sum(WT) / nc
-        print(f"{typ:>4s} {na:5d} {nc:5d} {AST:6.2f} {AWT:6.2f}")
-    """
     
     return

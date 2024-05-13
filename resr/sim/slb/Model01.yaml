@@ -1,0 +1,103 @@
+
+
+RUN:
+  time_unit: hours
+  sim_length: 1000
+  random_seed: 123
+
+
+SHOP:
+  ResourceTypes:
+    Lift: L01 L02 L03 L04
+    SrMech: SM01 SM02 SM03
+    JrMech: JM01 JM02 JM03 JM04
+  ResourceGroups:
+    Lifts: L01 L02 L03 L04
+    SrMechanics: SM01 SM02 SM03
+    JrMechanics: JM01 JM02 JM03 JM04
+    Mechanics: SM01 SM02 SM03 JM01 JM02 JM03 JM04
+
+
+JOB:
+  types: 
+    - A
+    - B
+  priority:
+    A: 0
+    B: 1
+  ia_time:
+    A: ExpRt  hours  123  1.2
+    B: ExpRt  hours  123  2.2
+  tasks:
+    A:
+     - name: Get_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: Oil_Change
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  20  30  40
+         JrMech: Tri  minutes  231  25  35  50
+
+     - name: Brake_Svc
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+          SrMech: Tri  minutes  222  20  25  30
+          JrMech: Tri  minutes  333  30  35  45
+      
+     - name: Rls_Lift
+       type: R
+       rsgr: Lifts
+       ridx: 0
+       dur:  None
+
+     - name: Test_Drive
+       type: SDR
+       ridx: 1
+       rsgr: SrMechanics
+       dur: 
+          SrMech: Tri  minutes  444  25  30  35
+
+    B:
+     - name: Get_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None
+
+     - name: Oil_Change
+       type: SDR 
+       rsgr: Mechanics
+       ridx: 1 
+       dur:
+         SrMech: Tri  minutes  733  15  20  30 
+         JrMech: Tri  minutes  622  20  25  35
+
+     - name: Brake_Svc 
+       type: SDR 
+       rsgr: Mechanics 
+       ridx: 1 
+       dur: 
+         SrMech: Tri  minutes  421  25  35  40
+         JrMech: Tri  minutes  534  30  40  50
+
+     - name: Rls_Lift
+       type: R
+       rsgr: Lifts
+       ridx: 0 
+       dur:  None
+
+     - name: Test_Drive
+       type: SDR 
+       rsgr: SrMechanics 
+       ridx: 1 
+       dur: 
+         SrMech: Tri  minutes  355  15  25  30
+
