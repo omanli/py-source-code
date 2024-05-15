@@ -1,0 +1,194 @@
+
+
+RUN:
+  time_unit: hours
+  sim_length: 10
+  random_seed: 123
+  trace: False
+
+
+SHOP:
+  ResourceTypes:
+    Lift: L01 L02 L03 L04 L05 L06
+    SrMech: SM01 SM02 SM03 SM04
+    JrMech: JM01 JM02 JM03 JM04
+  ResourceGroups:
+    Lifts: L01 L02 L03 L04 L05 L06
+    SrMechanics: SM01 SM02 SM03 SM04
+    JrMechanics: JM01 JM02 JM03 JM04
+    Mechanics: SM01 SM02 SM03 SM04 JM01 JM02 JM03 JM04
+    Mechanics_TestDrive: SM01 SM02 SM03 SM04 JM01
+
+
+JOB:
+  types: 
+   - Rt_Maint
+   - BrkDisc
+   - Front
+   - Egzhaust
+   - BrkHydr
+
+  priority:
+    Rt_Maint: 1
+    BrkDisc:  0
+    Front:    0
+    Egzhaust: 0
+    BrkHydr:  0
+
+  ia_time:
+    Rt_Maint: ExpRt  days  123  3.6
+    BrkDisc:  ExpRt  days  123  2.2
+    Front:    ExpRt  days  123  1.0
+    Egzhaust: ExpRt  days  123  1.0
+    BrkHydr:  ExpRt  days  123  2.0
+
+  tasks:
+    Rt_Maint: []
+    BrkDisc:
+     - name: BrkDisc_1_Test_Drive
+       type: SDR
+       ridx: 1
+       rsgr: Mechanics_TestDrive
+       dur: 
+          SrMech: Tri  minutes  444   5.0   5.5   7.0
+          JrMech: Tri  minutes  444  10.0  12.0  15.0
+
+     - name: BrkDisc_2_Req_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: BrkDisc_3_Disc_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  20  25  30
+         JrMech: Tri  minutes  231  40  45  50
+
+     - name: BrkDisc_4_Rel_Lift
+       type: R   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: BrkDisc_5_Gen_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  25  30  35
+         JrMech: Tri  minutes  231  40  45  50
+
+    Front:
+     - name: Front_1_Test_Drive
+       type: SDR
+       ridx: 1
+       rsgr: Mechanics_TestDrive
+       dur: 
+          SrMech: Tri  minutes  444   5.0   5.5   7.0
+          JrMech: Tri  minutes  444  10.0  12.0  15.0
+
+     - name: Front_2_Req_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: Front_3_Frnt_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  20  25  30
+         JrMech: Tri  minutes  231  40  45  50
+
+     - name: Front_4_Rel_Lift
+       type: R   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: Front_5_Gen_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  25  30  35
+         JrMech: Tri  minutes  231  40  45  50
+
+    Egzhaust:
+     - name: Egzhaust_1_Test_Drive
+       type: SDR
+       ridx: 1
+       rsgr: Mechanics_TestDrive
+       dur: 
+          SrMech: Tri  minutes  444   5.0   5.5   7.0
+          JrMech: Tri  minutes  444  10.0  12.0  15.0
+
+     - name: Egzhaust_2_Req_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: Egzhaust_3_Egz_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  20  25  30
+         JrMech: Tri  minutes  231  40  45  50
+
+     - name: Egzhaust_4_Rel_Lift
+       type: R   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: Egzhaust_5_Gen_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  25  30  35
+         JrMech: Tri  minutes  231  40  45  50
+
+    BrkHydr:
+     - name: BrkHydr_1_Test_Drive
+       type: SDR
+       ridx: 1
+       rsgr: Mechanics_TestDrive
+       dur: 
+          SrMech: Tri  minutes  444   5.0   5.5   7.0
+          JrMech: Tri  minutes  444  10.0  12.0  15.0
+
+     - name: BrkHydr_2_Req_Lift
+       type: S   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: BrkHydr_3_BrH_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  20  25  30
+         JrMech: Tri  minutes  231  40  45  50
+
+     - name: BrkHydr_4_Rel_Lift
+       type: R   
+       rsgr: Lifts
+       ridx: 0
+       dur:  None    
+
+     - name: BrkHydr_5_Gen_Ctrl
+       type: SDR
+       rsgr: Mechanics
+       ridx: 1
+       dur: 
+         SrMech: Tri  minutes  123  25  30  35
+         JrMech: Tri  minutes  231  40  45  50
+

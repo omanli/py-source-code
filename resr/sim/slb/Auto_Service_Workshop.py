@@ -12,19 +12,8 @@ ASW.Run(123, 3)
 ASW.Run(None, 3)
 ASW.SIM.Requests["Lifts"].print_info()
 
-import yaml
-with open('Model01.yaml', 'r') as yf:
-    D = yaml.safe_load(yf.read())
-
-D['RUN']
-D['SHOP']
-D['JOB']
-D['JOB']['types']
-D['JOB']['priority']
-D['JOB']['ia_time']
-D['JOB']['tasks']
-D['JOB']['tasks']['A']
-
+cd Documents/py/sim/slb/
+D = ASW.Read_Instance('Model_v1.yaml')
 
 
 TODO:
@@ -50,13 +39,17 @@ TODO:
 """
 
 import salabim as sim
+from .Util import RV, TU, SNS, Enum, dirm
+import yaml
 
-class SIM:
-    time_unit = 'hours'
-    trace = False
-    env = sim.Environment(time_unit=time_unit, trace=trace)
+SIM  = SNS()
+SHOP = SNS()
+JOB  = SNS()
 
-from .Util import RV, TU, SNS, Enum
+
+SIM.time_unit = 'hours'
+SIM.trace = False
+SIM.env = sim.Environment(time_unit=SIM.time_unit, trace=SIM.trace)
 
 SIM.prnlog = True
 #
@@ -74,96 +67,8 @@ SIM.fmt_apn = "J[{:}]"
 SIM.fmt_res = "{:}{:02d}"
 
 
-class SHOP:
-    restype = {}
-    restype['Lift']   = Enum('Lift',   4)
-    restype['SrMech'] = Enum('SrMech', 3)
-    restype['JrMech'] = Enum('JrMech', 4)
-
-    rtyp = { r:t for t,R in restype.items() for r in R }
-
-    resgroup = {}
-    resgroup['Lifts']       = restype['Lift']
-    resgroup['SrMechanics'] = restype['SrMech']
-    resgroup['JrMechanics'] = restype['JrMech']
-    resgroup['Mechanics']   = restype['SrMech'] + restype['JrMech']
-
-    resources = resgroup['Lifts'] + resgroup['SrMechanics'] + resgroup['JrMechanics']
 
 
-
-class JOB:
-    types    = []
-    priority = {}
-    ia_time  = {}
-    tasks    = {}
-
-    types.append('A')
-    types.append('B')
-    priority ['A'] = 'A'  # lower value := higher priority
-    priority ['B'] = 'B'
-    ia_time  ['A'] = RV(SIM.env, 'ExpRt', 'hours', 123, 1.2)
-    ia_time  ['B'] = RV(SIM.env, 'ExpRt', 'hours', 123, 2.2)
-
-    tasks['A'] = [
-        SNS(name='Get Lift',
-            type='S',   
-            rsgr='Lifts',
-            ridx=0,
-             dur=None),
-        SNS(name='Oil Change',
-            type='SDR',
-            rsgr='Mechanics',
-            ridx=1,
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 123, 20, 30, 40),
-                  'JrMech' : RV(SIM.env, 'Tri', 'minutes', 231, 25, 35, 50)}),
-        SNS(name='Brake Svc',
-            type='SDR',
-            rsgr='Mechanics', 
-            ridx=1,
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 222, 20, 25, 30),
-                  'JrMech' : RV(SIM.env, 'Tri', 'minutes', 333, 30, 35, 45)}),
-        SNS(name='Rls Lift',
-            type='R',
-            rsgr='Lifts',
-            ridx=0,
-             dur=None),
-        SNS(name='Test Drive',
-            type='SDR', 
-            ridx=1,
-            rsgr='SrMechanics', 
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 444, 25, 30, 35)}),
-    ]
-
-    tasks['B'] = [
-        SNS(name='Get Lift',
-            type='S',   
-            rsgr='Lifts',
-            ridx=0,
-             dur=None),
-        SNS(name='Oil Change',
-            type='SDR',
-            rsgr='Mechanics',
-            ridx=1,
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 733, 15, 20, 30),
-                  'JrMech' : RV(SIM.env, 'Tri', 'minutes', 622, 20, 25, 35)}),
-        SNS(name='Brake Svc',
-            type='SDR',
-            rsgr='Mechanics', 
-            ridx=1,
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 421, 25, 35, 40),
-                  'JrMech' : RV(SIM.env, 'Tri', 'minutes', 534, 30, 40, 50)}),
-        SNS(name='Rls Lift',
-            type='R',
-            rsgr='Lifts',
-            ridx=0,
-             dur=None),
-        SNS(name='Test Drive',
-            type='SDR', 
-            rsgr='SrMechanics', 
-            ridx=1,
-             dur={'SrMech' : RV(SIM.env, 'Tri', 'minutes', 355, 15, 25, 30)}),
-    ]
 
 
 def print_time_now():
@@ -290,7 +195,7 @@ class Scheduler(sim.Component):
             print(" [Schdl] Activates")
             for j in SIM.Requests:
                 # print(f"    {j.name()} " + (j.rsgr_req if j.rsgr_req is not None else "--"))
-                for r in SHOP.resgroup[j.rsgr_req]:
+                for r in SHOP.ResourceGroups[j.rsgr_req]:
                     if SIM.Resource[r].available_quantity() > 0:
                         SIM.Requests.remove(j)
                         assert j.resr_asg is None
@@ -301,7 +206,7 @@ class Scheduler(sim.Component):
             """
             if (len(Reqs) > 0) and ():
                 print(f"{rg:>13} Req:" + " ".join(f"{sum(1 for j in Reqs if j.job_type == jt):2}" for jt in JOB.types), end=" ")
-                print(" Avl:" + " ".join(f"{SIM.Resource[Res].available_quantity():2}" for Res in SHOP.resgroup[rg]))
+                print(" Avl:" + " ".join(f"{SIM.Resource[Res].available_quantity():2}" for Res in SHOP.ResourceGroups[rg]))
                 print(SIM.Resource)
             while (len(SIM.TBS) == 0) or all(not s.ispassive() for s in SIM.Servers.values()):
                 self.passivate()
@@ -311,7 +216,70 @@ class Scheduler(sim.Component):
 
 
 
+def Read_Instance(fn):
+    global SHOP, JOB, SIM
+
+    with open(fn, 'r') as yf:
+        D = yaml.safe_load(yf.read())
+
+    sim_fields = """
+        time_unit 
+        sim_length 
+        random_seed
+        trace
+    """.split()
+
+    for fld in sim_fields:
+        setattr(SIM, fld, D['RUN'][fld])
+
+    SHOP = SNS(**D['SHOP'])
+    JOB  = SNS(**D['JOB'])
+
+    IAT = {}
+    for typ,par in JOB.ia_time.items():
+        p = par.split()
+        IAT[typ] = RV(SIM.env, p[0], p[1], int(p[2]), *(float(x) for x in p[3:]))
+    # JOB.ia_time = SNS(**IAT)
+    # JOB.priority = SNS(**JOB.priority)
+    JOB.ia_time = IAT
+    JOB.priority = JOB.priority
+    for T,L in JOB.tasks.items():
+        JOB.tasks[T] = [SNS(**V) for V in L]
+        for X in JOB.tasks[T]:
+            if isinstance(X.dur, dict):
+                for r,par in X.dur.items():
+                    p = par.split()
+                    X.dur[r] = RV(SIM.env, p[0], p[1], int(p[2]), *(float(x) for x in p[3:]))
+            if X.dur == "None":
+                X.dur = None
+
+    for T in SHOP.ResourceTypes.keys():
+        SHOP.ResourceTypes[T] = SHOP.ResourceTypes[T].split()
+    for T in SHOP.ResourceGroups.keys():
+        SHOP.ResourceGroups[T] = SHOP.ResourceGroups[T].split()
+
+    SHOP.Resources = [R for T in SHOP.ResourceTypes.values() for R in T]
+
+    SHOP.rtyp = {r:t for t,R in SHOP.ResourceTypes.items() for r in R}
+
+    return
+
+
+
+def Run_Instance():
+    if SIM.time_unit not in "hours minutes days seconds years".split():
+        raise ValueError(f"Invalid SIM.time_unit={SIM.time_unit!r}")
+    
+    # convert sim_length to env default time unit
+    T = getattr(SIM.env, SIM.time_unit)(SIM.sim_length)
+
+    Run(SIM.random_seed, T)
+
+
+
 def Run(rs, T):
+    if rs is None:
+        rs = SIM.random_seed
 
     SIM.env = sim.Environment(time_unit=SIM.time_unit, trace=SIM.trace, do_reset=True)
 
@@ -320,6 +288,7 @@ def Run(rs, T):
         for rv in JOB.ia_time.values():
             r = SIM.env.random.randint(1000,9999)
             rv.randomstream = SIM.env.random.Random(r)
+    
 
     SIM.Scheduler = Scheduler()
 
@@ -330,7 +299,7 @@ def Run(rs, T):
 
     SIM.Resource = {
         r : sim.Resource(name=f"{r}", capacity=1)
-        for r in SHOP.resources
+        for r in SHOP.Resources
     }
 
     SIM.Requests = sim.Queue(name=f"Requests")
@@ -359,3 +328,4 @@ def Run(rs, T):
                 if (j.t_fin is not None) and (j.rsgr_req is not None)))
     
     return
+

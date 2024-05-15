@@ -7,6 +7,7 @@ RUN:
 
 
 SHOP:
+  Resources: L01 L02 L03 L04 SM01 SM02 SM03 JM01 JM02 JM03 JM04
   ResourceTypes:
     Lift: L01 L02 L03 L04
     SrMech: SM01 SM02 SM03

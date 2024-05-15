@@ -1,18 +1,23 @@
-import salabim as sim
+from types import SimpleNamespace as SNS
+# import salabim as sim
 
 
-class SNS:
-    def __init__(self, **kwargs):
-        for k,v in kwargs.items():
-            setattr(self, k, v)
+def dirm(O):
+    return [f"{m}" 
+            for m in dir(O)
+            if (not m.startswith('_')) and not callable(getattr(O, m))]
 
 
 def Enum(name, n):
     return [f"{name}{i:02d}" for i in range(1,n+1)]
 
 
-def TU(env):
-    """ TODO: return dict of functions: SIM.env.hours(), SIM.env.days(), etc
+def TU():
+    """ TODO: 
+        return dict of functions: SIM.env.hours(), SIM.env.days(), etc
+        env.hours(t)
+        env.minutes(t)     # express t*minutes in env.default_time_unit
+        env.to_minutes(t)  # express t*env.default_time_unit in minutes
     """
     D = {'year'   : 365*24*60*60,
          'week'   : 7*24*60*60,
@@ -81,3 +86,9 @@ def RV(env, dist, time_unit, rs, *pars):
         return g.__next__
 
     raise ValueError(f"Invalid dist={dist}")
+
+
+
+
+
+
