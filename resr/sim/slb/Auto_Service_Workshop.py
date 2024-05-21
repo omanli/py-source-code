@@ -7,7 +7,7 @@
 
 import <this> as ASW
 reload(ASW); 
-ASW.SIM.prnlog = True
+ASW.SIM.print_log = True
 ASW.Run(123, 3)
 ASW.Run(None, 3)
 ASW.SIM.Requests["Lifts"].print_info()
@@ -39,7 +39,7 @@ TODO:
 """
 
 import salabim as sim
-from .Util import RV, TU, SNS, Enum, dirm
+from Util import RV, TU, SNS, Enum, dirm
 import yaml
 
 SIM  = SNS()
@@ -51,7 +51,7 @@ SIM.time_unit = 'hours'
 SIM.trace = False
 SIM.env = sim.Environment(time_unit=SIM.time_unit, trace=SIM.trace)
 
-SIM.prnlog = True
+SIM.print_log = True
 #
 SIM.Arrival_Processes = None  # job creator component
 SIM.Scheduler = None   # scheduler component
@@ -76,25 +76,25 @@ def print_time_now():
 
 
 def print_job_state(j, m):
-    if SIM.prnlog:
+    if SIM.print_log:
         print_time_now()
         print(f"{j.name()} {m}")
 
 
 def print_srv_state(s, m, j):
-    if SIM.prnlog:
+    if SIM.print_log:
         print_time_now()
         print(f"{s} {m}  {j.name()}  ")
 
 
 def print_sch_state(s, j):
-    if SIM.prnlog:
+    if SIM.print_log:
         print_time_now()
         print(f"Sch[{s}] {j.name()}  ")
 
 
 def print_arr_event(j):
-    if SIM.prnlog:
+    if SIM.print_log:
         print_time_now()
         print(f"{j.name()} Arrives")
 
@@ -117,7 +117,7 @@ class Arrival_Process(sim.Component):
 
             j = Job(job_type = self.job_type, 
                     idx      = SIM.n_arrivals[self.job_type])
-            
+
             print_arr_event(j)
 
 
@@ -130,6 +130,7 @@ class Job(sim.Component):
         self.job_prty = JOB.priority[job_type]
         self.t_arr    = SIM.env.now()
         self.t_fin    = None
+        self.WT       = []
         self.rsgr_req = None
         self.resr_asg = None
         self.resr_acq = [None]*len(JOB.tasks[job_type])
@@ -145,7 +146,9 @@ class Job(sim.Component):
             assert self.rsgr_req is None
             assert self.resr_asg is None
             self.task.append(SNS())
-
+            self.task[-1].job_type = T.type
+            self.WT.append(0)
+            
             print_job_state(self, f"{T.name:19} [{T.rsgr}]")
 
             # Seize 
@@ -153,29 +156,35 @@ class Job(sim.Component):
                 self.rsgr_req = T.rsgr
                 self.task[-1].t_s_req = SIM.env.now()
                 SIM.Requests.add_sorted(component=self, priority=self.job_prty)
+                t_req = SIM.env.now()
                 SIM.Scheduler.activate()
                 self.passivate()
+                self.WT[-1] = SIM.env.now() - t_req 
                 self.task[-1].t_s_acq = SIM.env.now()
                 self.rsgr_req = None
                 assert self.resr_asg is not None
                 self.resr_acq[T.ridx] = self.resr_asg
                 self.resr_asg = None
-                print_job_state(self, "Acquired Resources: [" + " ".join(r.name() for r in self.claimed_resources()) + "]")
+                print_job_state(self, 
+                    "Acquired Resources: [" + \
+                    " ".join(r.name() for r in self.claimed_resources()) + "]")
 
             # Delay 
             if 'D' in T.type:
                 self.wip = True
                 self.task[-1].t_d_sta = SIM.env.now()
-                print_job_state(self, (f"Delay on Resource:  "
-                                       f"[{self.resr_acq[T.ridx].name()}"
-                                       f" {SHOP.rtyp[self.resr_acq[T.ridx].name()]}]"))
+                print_job_state(self, 
+                    (f"Delay on Resource:  "
+                     f"[{self.resr_acq[T.ridx].name()}"
+                     f" {SHOP.rtyp[self.resr_acq[T.ridx].name()]}]"))
                 self.hold(T.dur[SHOP.rtyp[self.resr_acq[T.ridx].name()]])
                 self.wip = False
                 self.task[-1].t_d_fin = SIM.env.now()
 
             # Release
             if 'R' in T.type:
-                print_job_state(self, f"Releasing Resource: [{self.resr_acq[T.ridx].name()}]")
+                print_job_state(self, 
+                    f"Releasing Resource: [{self.resr_acq[T.ridx].name()}]")
                 self.task[-1].t_r = SIM.env.now()
                 self.release(self.resr_acq[T.ridx])
                 assert self.resr_asg is None
@@ -191,8 +200,9 @@ class Scheduler(sim.Component):
             """ -iterate over requests
                 -try to assign resources to high priority 
             """
-            print_time_now()
-            print(" [Schdl] Activates")
+            if SIM.print_log:
+                print_time_now()
+                print(" [Schdl] Activates")
             for j in SIM.Requests:
                 # print(f"    {j.name()} " + (j.rsgr_req if j.rsgr_req is not None else "--"))
                 for r in SHOP.ResourceGroups[j.rsgr_req]:
@@ -205,8 +215,13 @@ class Scheduler(sim.Component):
             self.passivate()
             """
             if (len(Reqs) > 0) and ():
-                print(f"{rg:>13} Req:" + " ".join(f"{sum(1 for j in Reqs if j.job_type == jt):2}" for jt in JOB.types), end=" ")
-                print(" Avl:" + " ".join(f"{SIM.Resource[Res].available_quantity():2}" for Res in SHOP.ResourceGroups[rg]))
+                print(f"{rg:>13} Req:" + \
+                  " ".join(f"{sum(1 for j in Reqs 
+                             if j.job_type == jt):2}" 
+                             for jt in JOB.types), end=" ")
+                print(" Avl:" + \
+                  " ".join(f"{SIM.Resource[Res].available_quantity():2}" 
+                           for Res in SHOP.ResourceGroups[rg]))
                 print(SIM.Resource)
             while (len(SIM.TBS) == 0) or all(not s.ispassive() for s in SIM.Servers.values()):
                 self.passivate()
@@ -269,7 +284,7 @@ def Read_Instance(fn):
 def Run_Instance():
     if SIM.time_unit not in "hours minutes days seconds years".split():
         raise ValueError(f"Invalid SIM.time_unit={SIM.time_unit!r}")
-    
+
     # convert sim_length to env default time unit
     T = getattr(SIM.env, SIM.time_unit)(SIM.sim_length)
 
@@ -288,7 +303,7 @@ def Run(rs, T):
         for rv in JOB.ia_time.values():
             r = SIM.env.random.randint(1000,9999)
             rv.randomstream = SIM.env.random.Random(r)
-    
+
 
     SIM.Scheduler = Scheduler()
 
@@ -310,14 +325,14 @@ def Run(rs, T):
     SIM.env.run(till=T)
 
     print()
-    print(f"{'Type':>4s} {'#Arr':>5s} {'#Cmp':>5s} {'#WIP':>5s}") 
+    print(f"{'Type':>9s} {'#Arr':>5s} {'#Cmp':>5s} {'#WIP':>5s}") 
     # " {'AvgST':>6s} {'AvgWT':>6s}")
     for typ in JOB.types:
         # nc, AST, AWT = -1, -1, -1
         # "{nc:5d} {AST:6.2f} {AWT:6.2f}"
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
-        print(f"{typ:>4s} {na:5d} {nc:5d} {na-nc:5d}") 
+        print(f"{typ:>9s} {na:5d} {nc:5d} {na-nc:5d}") 
         """
         j.job_prty
         j.rsgr_req
@@ -326,6 +341,30 @@ def Run(rs, T):
     print("\nFinished but still requesting:", 
             sum(1 for j in SIM.Arrivals 
                 if (j.t_fin is not None) and (j.rsgr_req is not None)))
+
+    for typ in JOB.types:
+        print(f"{typ}:")
+        for j in SIM.Arrivals:
+            if (j.job_type == typ) and (j.t_fin is not None):
+                print(f"   {j.name()} {j.t_arr:6.2f} {j.t_fin:6.2f}", end=" ")
+                for T in j.task:
+                    print(T.job_type, end=" ")
+                print()
+            
+    """
+    if "S" in .task.job_type
+    .task[-1].t_s_req
+    .task[-1].t_s_acq
+
+    if "D" in .task.job_type
+    self.task[-1].t_d_sta = SIM.env.now()
+    self.task[-1].t_d_fin = SIM.env.now()
+
+    # Release
+    if "D" in .task.job_type
+        self.task[-1].t_r
+
+    """
     
     return
 
