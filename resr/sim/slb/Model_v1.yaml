@@ -43,7 +43,75 @@ JOB:
     BrkHydr:  ExpRt  days  123  2.0
 
   tasks:
-    Rt_Maint: []
+    Rt_Maint:
+      - name: Rt_Maint_1_Test_Drive
+        type: SDR
+        ridx: 1
+        rsgr: Mechanics_TestDrive
+        dur: 
+           SrMech: Tri  minutes  444   5.0   5.5   7.0
+           JrMech: Tri  minutes  444  10.0  12.0  15.0
+ 
+      - name: Rt_Maint_2_Req_Lift
+        type: S   
+        rsgr: Lifts
+        ridx: 0
+        dur:  None
+
+      - name: Rt_Maint_3_Oil_n_Filter_Change
+        type: SDR
+        ridx: 1
+        rsgr: Mechanics
+        dur: 
+           SrMech: Tri  minutes  444  70.0  80.0  90.0
+           JrMech: Tri  minutes  444  85.0  95.0 105.0
+
+      - name: Rt_Maint_4_Disc_Ctrl
+        type: SDR
+        rsgr: Mechanics
+        ridx: 1
+        dur: 
+           SrMech: Tri  minutes  123  20  25  30
+           JrMech: Tri  minutes  231  40  45  50
+
+      - name: Rt_Maint_5_Frnt_Ctrl
+        type: SDR
+        rsgr: Mechanics
+        ridx: 1
+        dur: 
+           SrMech: Tri  minutes  123  20  25  30
+           JrMech: Tri  minutes  231  40  45  50
+
+      - name: Rt_Maint_6_Egz_Ctrl
+        type: SDR
+        rsgr: Mechanics
+        ridx: 1
+        dur: 
+           SrMech: Tri  minutes  123  20  25  30
+           JrMech: Tri  minutes  231  40  45  50
+
+      - name: Rt_Maint_7_BrH_Ctrl
+        type: SDR
+        rsgr: Mechanics
+        ridx: 1
+        dur: 
+           SrMech: Tri  minutes  123  20  25  30
+           JrMech: Tri  minutes  231  40  45  50
+
+      - name: Rt_Maint_8_Rel_Lift
+        type: R   
+        rsgr: Lifts
+        ridx: 0
+        dur:  None    
+    
+      - name: Rt_Maint_9_Gen_Ctrl
+        type: SDR
+        rsgr: Mechanics
+        ridx: 1
+        dur: 
+           SrMech: Tri  minutes  123  25  30  35
+           JrMech: Tri  minutes  231  40  45  50
+
     BrkDisc:
      - name: BrkDisc_1_Test_Drive
        type: SDR
