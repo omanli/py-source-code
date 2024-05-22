@@ -17,6 +17,13 @@ D = ASW.Read_Instance('Model_v1.yaml')
 
 
 TODO:
+ - Implement Replications
+ - Implement Warm Up Period
+ - Report Utilization Stats
+ - Report WIP Stats
+ - Sim Output write to File
+
+TODO:
   - If more than one type of resource is available to a Request 
        decide which one to allocate
   - Among multiple Requests that can be honored select which ones 
@@ -51,7 +58,7 @@ SIM.time_unit = 'hours'
 SIM.trace = False
 SIM.env = sim.Environment(time_unit=SIM.time_unit, trace=SIM.trace)
 
-SIM.print_log = True
+SIM.print_log = False
 #
 SIM.Arrival_Processes = None  # job creator component
 SIM.Scheduler = None   # scheduler component
@@ -303,7 +310,12 @@ def Run(rs, T):
         for rv in JOB.ia_time.values():
             r = SIM.env.random.randint(1000,9999)
             rv.randomstream = SIM.env.random.Random(r)
-
+        for JT in JOB.tasks.values():
+            for TT in JT:
+                if TT.dur is not None:
+                    for dd in TT.dur.values():
+                        r = SIM.env.random.randint(1000,9999)
+                        dd.randomstream = SIM.env.random.Random(r)
 
     SIM.Scheduler = Scheduler()
 
@@ -325,46 +337,54 @@ def Run(rs, T):
     SIM.env.run(till=T)
 
     print()
-    print(f"{'Type':>9s} {'#Arr':>5s} {'#Cmp':>5s} {'#WIP':>5s}") 
+    print(f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s}") 
     # " {'AvgST':>6s} {'AvgWT':>6s}")
     for typ in JOB.types:
         # nc, AST, AWT = -1, -1, -1
         # "{nc:5d} {AST:6.2f} {AWT:6.2f}"
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
-        print(f"{typ:>9s} {na:5d} {nc:5d} {na-nc:5d}") 
-        """
-        j.job_prty
-        j.rsgr_req
-        """
+        print(f"{typ:>12s} {na:6d} {nc:6d} {na-nc:6d}") 
+    print()
 
+    """
     print("\nFinished but still requesting:", 
             sum(1 for j in SIM.Arrivals 
                 if (j.t_fin is not None) and (j.rsgr_req is not None)))
+    """
 
+    """
     for typ in JOB.types:
         print(f"{typ}:")
         for j in SIM.Arrivals:
             if (j.job_type == typ) and (j.t_fin is not None):
-                print(f"   {j.name()} {j.t_arr:6.2f} {j.t_fin:6.2f}", end=" ")
+                print(f"   {j.name()} {j.t_fin - j.t_arr:6.2f}", end=" ")
                 for T in j.task:
-                    print(T.job_type, end=" ")
+                    if "S" in T.job_type:
+                        print(f"S:{T.t_s_acq - T.t_s_req:4.2f}", end=" ")
+                for T in j.task:
+                    if "D" in T.job_type:
+                        print(f"D:{T.t_d_fin - T.t_d_sta:4.2f}", end=" ")
                 print()
-            
     """
-    if "S" in .task.job_type
-    .task[-1].t_s_req
-    .task[-1].t_s_acq
 
-    if "D" in .task.job_type
-    self.task[-1].t_d_sta = SIM.env.now()
-    self.task[-1].t_d_fin = SIM.env.now()
+    print(f"{' ':>12} {'AST':>6} {'AWT':>6} {'ATT':>6}")
+    for typ in JOB.types:
+        n, AST, AWT, ATT = 0, 0, 0, 0
+        for j in SIM.Arrivals:
+            if (j.job_type == typ) and (j.t_fin is not None):
+                n += 1
+                AST += j.t_fin - j.t_arr
+                for T in j.task:
+                    if "S" in T.job_type:
+                        AWT += T.t_s_acq - T.t_s_req
+                for T in j.task:
+                    if "D" in T.job_type:
+                        ATT += T.t_d_fin - T.t_d_sta
+        AST = AST / n
+        AWT = AWT / n
+        ATT = ATT / n
+        print(f"{typ:>12} {AST:6.2f} {AWT:6.2f} {ATT:6.2f}")
 
-    # Release
-    if "D" in .task.job_type
-        self.task[-1].t_r
-
-    """
-    
+                
     return
-
