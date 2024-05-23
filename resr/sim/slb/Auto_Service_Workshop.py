@@ -386,5 +386,12 @@ def Run(rs, T):
         ATT = ATT / n
         print(f"{typ:>12} {AST:6.2f} {AWT:6.2f} {ATT:6.2f}")
 
+    """
+    for n,R in SIM.Resource.items():
+        R.print_statistics()
+    """
+    for Typ,RL in SHOP.ResourceTypes.items():
+        Utl = sim.numpy.mean(tuple(SIM.Resource[R].occupancy.mean() for R in RL))
+        print(f"{Typ:>12} {100*Utl:5.1f}%")
                 
     return
