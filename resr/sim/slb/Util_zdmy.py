@@ -159,3 +159,146 @@ def Read_yaml():
 
     return D
 
+
+"""
+mean
+std.deviation
+minimum
+median
+90% percentile
+95% percentile
+maximum
+
+
+SIM.Resource['L01'].all_monitors()
+  (Length of requesters of L01)
+  (Length of stay in requesters of L01)
+  (Length of claimers of L01)
+  (Length of stay in claimers of L01)
+  (Capacity of L01)
+  (Available quantity of L01)
+  (Claimed quantity of L01)
+  (Occupancy of L01)
+
+ASW.SIM.Resource['L01'].occupancy.mean()
+ASW.SIM.Resource['L01'].occupancy.std()
+ASW.SIM.Resource['L01'].claimed_quantity.mean()
+ASW.SIM.Resource['L01'].claimed_quantity.std()
+
+
+occupancy
+requesters
+claimed_quantity
+
+all_monitors
+available_quantity
+base_name
+capacity
+claimers
+deregister
+env
+ispreemptive
+monitor
+name
+print_histograms
+print_info
+print_statistics
+register
+release
+reset_monitors
+sequence_number
+set_capacity
+setup
+
+
+
+Statistics of JM04 at       100.000                                  all    excl.zero         zero
+-------------------------------------------- -------------- ------------ ------------ ------------
+Length of requesters of JM04                 duration            100            0          100
+Length of stay in requesters of JM04         entries              65           65            0
+                                             mean                  0            0
+                                             std.deviation         0            0
+
+                                             minimum               0            0
+                                             median                0            0
+                                             90% percentile        0            0
+                                             95% percentile        0            0
+                                             maximum               0            0
+
+Length of claimers of JM04                   duration            100           54.833       45.167
+                                             mean                  0.548        1
+                                             std.deviation         0.498        0
+
+                                             minimum               0            1
+                                             median                1            1
+                                             90% percentile        1            1
+                                             95% percentile        1            1
+                                             maximum               1            1
+
+Length of stay in claimers of JM04           entries              64           64            0
+                                             mean                  0.849        0.849
+                                             std.deviation         0.260        0.260
+
+                                             minimum               0.690        0.690
+                                             median                0.754        0.754
+                                             90% percentile        1.482        1.482
+                                             95% percentile        1.534        1.534
+                                             maximum               1.620        1.620
+
+Capacity of JM04                             duration            100          100            0
+                                             mean                  1            1
+                                             std.deviation         0            0
+
+                                             minimum               1            1
+                                             median                1            1
+                                             90% percentile        1            1
+                                             95% percentile        1            1
+                                             maximum               1            1
+
+Available quantity of JM04                   duration            100           45.167       54.833
+                                             mean                  0.452        1
+                                             std.deviation         0.498        0
+
+                                             minimum               0            1
+                                             median                0            1
+                                             90% percentile        1            1
+                                             95% percentile        1            1
+                                             maximum               1            1
+
+Claimed quantity of JM04                     duration            100           54.833       45.167
+                                             mean                  0.548        1
+                                             std.deviation         0.498        0
+
+                                             minimum               0            1
+                                             median                1            1
+                                             90% percentile        1            1
+                                             95% percentile        1            1
+                                             maximum               1            1
+
+Occupancy of JM04                            duration            100           54.833       45.167
+                                             mean                  0.548        1
+                                             std.deviation         0.498        0
+
+                                             minimum               0            1
+                                             median                1            1
+                                             90% percentile        1            1
+                                             95% percentile        1            1
+                                             maximum               1            1
+
+"""
+
+
+"""
+    for typ in JOB.types:
+        print(f"{typ}:")
+        for j in SIM.Arrivals:
+            if (j.job_type == typ) and (j.t_fin is not None):
+                print(f"   {j.name()} {j.t_fin - j.t_arr:6.2f}", end=" ")
+                for T in j.task:
+                    if "S" in T.job_type:
+                        print(f"S:{T.t_s_acq - T.t_s_req:4.2f}", end=" ")
+                for T in j.task:
+                    if "D" in T.job_type:
+                        print(f"D:{T.t_d_fin - T.t_d_sta:4.2f}", end=" ")
+                print()
+"""
