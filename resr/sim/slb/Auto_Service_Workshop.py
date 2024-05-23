@@ -64,6 +64,7 @@ SIM.Arrival_Processes = None  # job creator component
 SIM.Scheduler = None   # scheduler component
 SIM.Resource  = None   # dict of all resources
 SIM.Requests  = None   # queue of all Resource Requests
+SIM.System    = None   # queue of all jobs currently in the Shop
 #
 SIM.Arrivals = None    # list of all jobs arrived
 SIM.n_arrivals = None
@@ -146,6 +147,7 @@ class Job(sim.Component):
 
     def process(self):
         SIM.Arrivals.append(self)
+        SIM.System.add(self)
         self.wip = False
 
         for T in JOB.tasks[self.job_type]:
@@ -198,6 +200,7 @@ class Job(sim.Component):
                 SIM.Scheduler.activate()
 
         self.t_fin = SIM.env.now()
+        SIM.System.remove(self)
 
 
 
@@ -329,6 +332,7 @@ def Run(rs, T):
         for r in SHOP.Resources
     }
 
+    SIM.System   = sim.Queue(name=f"System")
     SIM.Requests = sim.Queue(name=f"Requests")
 
     SIM.Arrivals = []
@@ -337,39 +341,12 @@ def Run(rs, T):
     SIM.env.run(till=T)
 
     print()
-    print(f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s}") 
-    # " {'AvgST':>6s} {'AvgWT':>6s}")
+    print((f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s} "
+           f"{'AST':>6} {'AWT':>6} {'ATT':>6}"))
     for typ in JOB.types:
-        # nc, AST, AWT = -1, -1, -1
-        # "{nc:5d} {AST:6.2f} {AWT:6.2f}"
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
-        print(f"{typ:>12s} {na:6d} {nc:6d} {na-nc:6d}") 
-    print()
 
-    """
-    print("\nFinished but still requesting:", 
-            sum(1 for j in SIM.Arrivals 
-                if (j.t_fin is not None) and (j.rsgr_req is not None)))
-    """
-
-    """
-    for typ in JOB.types:
-        print(f"{typ}:")
-        for j in SIM.Arrivals:
-            if (j.job_type == typ) and (j.t_fin is not None):
-                print(f"   {j.name()} {j.t_fin - j.t_arr:6.2f}", end=" ")
-                for T in j.task:
-                    if "S" in T.job_type:
-                        print(f"S:{T.t_s_acq - T.t_s_req:4.2f}", end=" ")
-                for T in j.task:
-                    if "D" in T.job_type:
-                        print(f"D:{T.t_d_fin - T.t_d_sta:4.2f}", end=" ")
-                print()
-    """
-
-    print(f"{' ':>12} {'AST':>6} {'AWT':>6} {'ATT':>6}")
-    for typ in JOB.types:
         n, AST, AWT, ATT = 0, 0, 0, 0
         for j in SIM.Arrivals:
             if (j.job_type == typ) and (j.t_fin is not None):
@@ -384,7 +361,10 @@ def Run(rs, T):
         AST = AST / n
         AWT = AWT / n
         ATT = ATT / n
-        print(f"{typ:>12} {AST:6.2f} {AWT:6.2f} {ATT:6.2f}")
+
+        print((f"{typ:>12s} {na:6d} {nc:6d} {na-nc:6d} " 
+               f"{AST:6.2f} {AWT:6.2f} {ATT:6.2f}"))
+    print()
 
     """
     for n,R in SIM.Resource.items():
@@ -393,5 +373,8 @@ def Run(rs, T):
     for Typ,RL in SHOP.ResourceTypes.items():
         Utl = sim.numpy.mean(tuple(SIM.Resource[R].occupancy.mean() for R in RL))
         print(f"{Typ:>12} {100*Utl:5.1f}%")
-                
+    print()
+
+    print(f"{'System':>12} {SIM.System.length_of_stay.mean():6.2f}")
+    
     return
