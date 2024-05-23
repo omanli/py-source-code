@@ -289,6 +289,10 @@ Occupancy of JM04                            duration            100           5
 
 
 """
+    print("\nFinished but still requesting:", 
+            sum(1 for j in SIM.Arrivals 
+                if (j.t_fin is not None) and (j.rsgr_req is not None)))
+
     for typ in JOB.types:
         print(f"{typ}:")
         for j in SIM.Arrivals:
