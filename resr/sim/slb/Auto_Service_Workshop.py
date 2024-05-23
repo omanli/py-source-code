@@ -370,11 +370,16 @@ def Run(rs, T):
     for n,R in SIM.Resource.items():
         R.print_statistics()
     """
+    print(f"{' ':>12s} {'Util':>6s}")
     for Typ,RL in SHOP.ResourceTypes.items():
         Utl = sim.numpy.mean(tuple(SIM.Resource[R].occupancy.mean() for R in RL))
         print(f"{Typ:>12} {100*Utl:5.1f}%")
     print()
 
-    print(f"{'System':>12} {SIM.System.length_of_stay.mean():6.2f}")
+    print(f"{'System':>12s}")
+    print(f"{'Len of Stay':>12} {SIM.System.length_of_stay.mean():6.2f}")
+    print(f"{'Num in Sys':>12} {SIM.System.length.mean():6.2f}")
+    print(f"{'Num Arr':>12} {SIM.System.number_of_arrivals:6d}")
+    print(f"{'Num Dept':>12} {SIM.System.number_of_departures:6d}")
     
     return
