@@ -157,7 +157,7 @@ class Job(sim.Component):
             self.task.append(SNS())
             self.task[-1].job_type = T.type
             self.WT.append(0)
-            
+
             print_job_state(self, f"{T.name:19} [{T.rsgr}]")
 
             # Seize 
@@ -372,7 +372,7 @@ def Run(rs, T):
     """
     print(f"{' ':>12s} {'Util':>6s}")
     for Typ,RL in SHOP.ResourceTypes.items():
-        Utl = sim.numpy.mean(tuple(SIM.Resource[R].occupancy.mean() for R in RL))
+        Utl = sum(SIM.Resource[R].occupancy.mean() for R in RL) / len(RL)
         print(f"{Typ:>12} {100*Utl:5.1f}%")
     print()
 
@@ -381,5 +381,5 @@ def Run(rs, T):
     print(f"{'Num in Sys':>12} {SIM.System.length.mean():6.2f}")
     print(f"{'Num Arr':>12} {SIM.System.number_of_arrivals:6d}")
     print(f"{'Num Dept':>12} {SIM.System.number_of_departures:6d}")
-    
+
     return
