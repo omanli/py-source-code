@@ -17,11 +17,12 @@ D = ASW.Read_Instance('Model_v1.yaml')
 
 
 TODO:
- - Implement Replications
- - Implement Warm Up Period
- - Report Utilization Stats
- - Report WIP Stats
- - Sim Output write to File
+-- Sim Output write to File
+-- Implement Replications
+-- Implement Warm Up Period
+[] Report Utilization Stats
+[] Report WIP Stats
+[] Report Waiting Time Stats
 
 TODO:
   - If more than one type of resource is available to a Request 
@@ -115,7 +116,7 @@ def print_shop_state():
 class Arrival_Process(sim.Component):
     def __init__(self, job_type, *args, **kwargs):
         super().__init__(name=SIM.fmt_apn.format(job_type), *args, **kwargs)
-        self.job_type     = job_type
+        self.job_type = job_type
 
     def process(self):
         while True:
@@ -156,6 +157,7 @@ class Job(sim.Component):
             assert self.resr_asg is None
             self.task.append(SNS())
             self.task[-1].job_type = T.type
+            self.task[-1].res_grp  = T.rsgr
             self.WT.append(0)
             
             print_job_state(self, f"{T.name:19} [{T.rsgr}]")
@@ -340,14 +342,18 @@ def Run(rs, T):
 
     SIM.env.run(till=T)
 
+
+
     print()
     print((f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s} "
            f"{'AST':>6} {'AWT':>6} {'ATT':>6} {'NiS':>6}"))
+    AWR = { typ:{r:0 for r in SHOP.ResourceGroups.keys()} for typ in JOB.types}
     for typ in JOB.types:
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
 
-        n, AST, AWT, ATT, NiS = 0, 0, 0, 0, 0
+        n = 0
+        AST, AWT, ATT, NiS = 0, 0, 0, 0
         for j in SIM.Arrivals:
             if (j.job_type == typ):
                 NiS += (j.t_fin - j.t_arr) if j.t_fin else (T - j.t_arr)
@@ -357,6 +363,7 @@ def Run(rs, T):
                 for tt in j.task:
                     if "S" in tt.job_type:
                         AWT += tt.t_s_acq - tt.t_s_req
+                        AWR[typ][tt.res_grp] += tt.t_s_acq - tt.t_s_req
                 for tt in j.task:
                     if "D" in tt.job_type:
                         ATT += tt.t_d_fin - tt.t_d_sta
@@ -364,19 +371,22 @@ def Run(rs, T):
         AST = AST / n
         AWT = AWT / n
         ATT = ATT / n
-
+        for rg in SHOP.ResourceGroups.keys():
+            AWR[typ][rg] /= n
         NiS = NiS / T
-
-        # Len of Stay = mean([(j.t_fin - j.t_arr) for j in SIM.Arrivals if j.t_fin])
 
         print((f"{typ:>12s} {na:6d} {nc:6d} {na-nc:6d} " 
                f"{AST:6.2f} {AWT:6.2f} {ATT:6.2f} {NiS:6.2f}"))
     print()
 
-    """
-    for n,R in SIM.Resource.items():
-        R.print_statistics()
-    """
+    print(f"{' ':>12s} " + " ".join(f"{rg[:6]:>6s}" for rg in SHOP.ResourceGroups.keys()))
+    for typ in JOB.types:
+        print(f"{typ:>12}", end=" ")
+        for rg in SHOP.ResourceGroups.keys():
+            print(f"{AWR[typ][rg]:6.2f}", end=" ")
+        print()
+    print()
+
     print(f"{' ':>12s} {'Util':>6s}")
     for Typ,RL in SHOP.ResourceTypes.items():
         Utl = sum(SIM.Resource[R].occupancy.mean() for R in RL) / len(RL)
@@ -387,9 +397,4 @@ def Run(rs, T):
     print(f"{'Len of Stay':>12} {SIM.System.length_of_stay.mean():6.2f}")
     print(f"{'Num in Sys':>12} {SIM.System.length.mean():6.2f}")
 
-    # Num Arr = SIM.System.number_of_arrivals
-    # Num Dept = SIM.System.number_of_departures
-    # Num in Sys = sum(((j.t_fin if j.t_fin else SIM.env.now()) - j.t_arr) for j in SIM.Arrivals) / T
-    # Len of Stay = mean([(j.t_fin - j.t_arr) for j in SIM.Arrivals if j.t_fin])
-    
     return
