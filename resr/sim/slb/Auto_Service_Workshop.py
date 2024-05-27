@@ -157,7 +157,7 @@ class Job(sim.Component):
             self.task.append(SNS())
             self.task[-1].job_type = T.type
             self.WT.append(0)
-
+            
             print_job_state(self, f"{T.name:19} [{T.rsgr}]")
 
             # Seize 
@@ -342,28 +342,35 @@ def Run(rs, T):
 
     print()
     print((f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s} "
-           f"{'AST':>6} {'AWT':>6} {'ATT':>6}"))
+           f"{'AST':>6} {'AWT':>6} {'ATT':>6} {'NiS':>6}"))
     for typ in JOB.types:
         na = SIM.n_arrivals[typ]
         nc = sum(1 for j in SIM.Arrivals if (j.job_type == typ) and (j.t_fin is not None))
 
-        n, AST, AWT, ATT = 0, 0, 0, 0
+        n, AST, AWT, ATT, NiS = 0, 0, 0, 0, 0
         for j in SIM.Arrivals:
+            if (j.job_type == typ):
+                NiS += (j.t_fin - j.t_arr) if j.t_fin else (T - j.t_arr)
             if (j.job_type == typ) and (j.t_fin is not None):
                 n += 1
                 AST += j.t_fin - j.t_arr
-                for T in j.task:
-                    if "S" in T.job_type:
-                        AWT += T.t_s_acq - T.t_s_req
-                for T in j.task:
-                    if "D" in T.job_type:
-                        ATT += T.t_d_fin - T.t_d_sta
+                for tt in j.task:
+                    if "S" in tt.job_type:
+                        AWT += tt.t_s_acq - tt.t_s_req
+                for tt in j.task:
+                    if "D" in tt.job_type:
+                        ATT += tt.t_d_fin - tt.t_d_sta
+        n = 1 if n == 0 else n
         AST = AST / n
         AWT = AWT / n
         ATT = ATT / n
 
+        NiS = NiS / T
+
+        # Len of Stay = mean([(j.t_fin - j.t_arr) for j in SIM.Arrivals if j.t_fin])
+
         print((f"{typ:>12s} {na:6d} {nc:6d} {na-nc:6d} " 
-               f"{AST:6.2f} {AWT:6.2f} {ATT:6.2f}"))
+               f"{AST:6.2f} {AWT:6.2f} {ATT:6.2f} {NiS:6.2f}"))
     print()
 
     """
@@ -379,7 +386,10 @@ def Run(rs, T):
     print(f"{'System':>12s}")
     print(f"{'Len of Stay':>12} {SIM.System.length_of_stay.mean():6.2f}")
     print(f"{'Num in Sys':>12} {SIM.System.length.mean():6.2f}")
-    print(f"{'Num Arr':>12} {SIM.System.number_of_arrivals:6d}")
-    print(f"{'Num Dept':>12} {SIM.System.number_of_departures:6d}")
 
+    # Num Arr = SIM.System.number_of_arrivals
+    # Num Dept = SIM.System.number_of_departures
+    # Num in Sys = sum(((j.t_fin if j.t_fin else SIM.env.now()) - j.t_arr) for j in SIM.Arrivals) / T
+    # Len of Stay = mean([(j.t_fin - j.t_arr) for j in SIM.Arrivals if j.t_fin])
+    
     return
