@@ -1,10 +1,8 @@
-
-
 RUN:
   time_unit: hours
   sim_length: 10
-  wup_length:  3
-  random_seed: 123
+  wup_length:  5
+  random_seeds: 11 12 13 14 15 16 17 18 19 20
   trace: False
 
 
