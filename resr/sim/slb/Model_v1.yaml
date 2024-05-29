@@ -3,6 +3,7 @@
 RUN:
   time_unit: hours
   sim_length: 10
+  wup_length:  3
   random_seed: 123
   trace: False
 
