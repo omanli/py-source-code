@@ -4,36 +4,12 @@
     Jobs have class dependent sequence of tasks
     Jobs have class dependent priorities in seizing resources
     Tasks have class dependent (distr of) durations
-
-import <this> as ASW
-reload(ASW); 
-ASW.SIM.print_log = True
-ASW.Run(123, 3)
-ASW.Run(None, 3)
-ASW.SIM.Requests["Lifts"].print_info()
-
-cd Documents/py/sim/slb/
-D = ASW.Read_Instance('Model_v1.yaml')
-
-
-TODO:
--- Sim Output write to File
--- Implement Replications
-[] Implement Warm Up Period
-[] Report Utilization Stats
-[] Report WIP Stats
-[] Report Waiting Time Stats
-
-TODO:
-  - If more than one type of resource is available to a Request 
-       decide which one to allocate
-  - Among multiple Requests that can be honored select which one(s) 
-       to respond to
 """
 
 import salabim as sim
 from .Util import RV, TU, SNS, Enum, dirm
 import yaml
+import time
 
 inf = float('inf')
 
@@ -229,12 +205,14 @@ def Read_Instance(fn):
         time_unit
         sim_length
         wup_length
-        random_seed
+        random_seeds
         trace
     """.split()
 
     for fld in sim_fields:
         setattr(SIM, fld, D['RUN'][fld])
+
+    SIM.random_seeds = [int(rs) for rs in SIM.random_seeds.split()]
 
     SHOP = SNS(**D['SHOP'])
     JOB  = SNS(**D['JOB'])
@@ -244,8 +222,7 @@ def Read_Instance(fn):
         p = par.split()
         IAT[typ] = RV(SIM.env, p[0], p[1], int(p[2]), 
                       *(float(x) for x in p[3:]))
-    # JOB.ia_time = SNS(**IAT)
-    # JOB.priority = SNS(**JOB.priority)
+
     JOB.ia_time = IAT
     JOB.priority = JOB.priority
     for T,L in JOB.tasks.items():
@@ -261,6 +238,7 @@ def Read_Instance(fn):
 
     for T in SHOP.ResourceTypes.keys():
         SHOP.ResourceTypes[T] = SHOP.ResourceTypes[T].split()
+
     for T in SHOP.ResourceGroups.keys():
         SHOP.ResourceGroups[T] = SHOP.ResourceGroups[T].split()
 
@@ -274,7 +252,7 @@ def Read_Instance(fn):
 
 
 
-def Run_Instance():
+def Run_Reps():
     if SIM.time_unit not in "hours minutes days seconds years".split():
         raise ValueError(f"Invalid SIM.time_unit={SIM.time_unit!r}")
 
@@ -282,16 +260,26 @@ def Run_Instance():
     T = getattr(SIM.env, SIM.time_unit)(SIM.sim_length)
     W = getattr(SIM.env, SIM.time_unit)(SIM.wup_length)
 
-    Run(rs=SIM.random_seed, T=T, W=W)
+    M = []
+    for i,rs in enumerate(SIM.random_seeds):
+        print(f"Running replication {i+1:2} of {len(SIM.random_seeds)}")
+        Run(rs=rs, T=T, W=W)
+        m = Calculate_Metrics(T=T, W=W)
+        M.append(m)
+    print("Writing to Output file")
+    Output_Metrics(M)
+
+
+
+def Run_Instance(rs, T, W):
+    Run(rs=rs, T=T, W=W)
     m = Calculate_Metrics(T=T, W=W)
     Print_Metrics(m)
+    return m
 
 
 
 def Run(rs, T, W=0):
-    if rs is None:
-        rs = SIM.random_seed
-
     SIM.env = sim.Environment(time_unit=SIM.time_unit, 
                               trace=SIM.trace, 
                               do_reset=True)
@@ -337,6 +325,7 @@ def Run(rs, T, W=0):
     return
 
 
+
 def Print_Metrics(m):
     print(("\n" f"{'Type':>12s} {'#Arr':>6s} {'#Cmp':>6s} {'#WIP':>6s} "
            f"{'AST':>6} {'AWT':>6} {'ATT':>6} {'NiS':>6}"))
@@ -361,6 +350,41 @@ def Print_Metrics(m):
             print(f"{m.Avg_Wait_Res[t][rg]:6.2f}", end=" ")
         print()
     print()
+
+
+
+def Output_Metrics(M):
+    fn = 'Output-' + time.strftime("%Y-%m-%d-%H-%M-%S") + '.txt'
+    with open(fn, "w") as outfile:
+        for r,m in enumerate(M):
+            outfile.write(f"Replication #{r+1}\n\n")
+            outfile.write("Type\t#Arr\t#Cmp\t#WIP\tAST\tAWT\tATT\tNiS\n")
+            for t in JOB.types:
+                outfile.write((f"{t}\t" 
+                               f"{m.n_arr[t]:d}\t{m.n_dep[t]:d}\t{m.n_arr[t]-m.n_dep[t]:d}\t" 
+                               f"{m.Avg_Sys_Time[t]:6.2f}\t"
+                               f"{m.Avg_Wait_Time[t]:6.2f}\t"
+                               f"{m.Avg_Task_Time[t]:6.2f}\t"
+                               f"{m.Avg_Num_in_Sys[t]:6.2f}"
+                                "\n"))
+
+            outfile.write('\n')
+            outfile.write(f"\tUtil\n")
+            for rt in SHOP.ResourceTypes.keys():
+                outfile.write((f"{rt}\t"
+                               f"{m.Utilization[rt]:5.3f}"
+                                "\n"))
+
+            outfile.write('\n')
+            outfile.write(f"\t" + \
+                           "\t".join(f"{rg[:6]:s}" 
+                                     for rg in SHOP.ResourceGroups.keys()) + "\n")
+            for t in JOB.types:
+                outfile.write(f"{t}\t" + \
+                              "\t".join(f"{m.Avg_Wait_Res[t][rg]:6.2f}"
+                                        for rg in SHOP.ResourceGroups.keys()) + "\n")
+            outfile.write('\n\n\n')
+
 
 
 
